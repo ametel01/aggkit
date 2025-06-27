@@ -22,4 +22,6 @@ type Config struct {
 	BlockFinality     string                   `jsonschema:"enum=LatestBlock, enum=SafeBlock, enum=PendingBlock, enum=FinalizedBlock, enum=EarliestBlock" mapstructure:"BlockFinality"` //nolint:lll
 	WaitPeriodNextGER types.Duration           `mapstructure:"WaitPeriodNextGER"`
 	EVMSender         chaingersender.EVMConfig `mapstructure:"EVMSender"`
+	// SandboxMode enables simplified operation for local development
+	SandboxMode bool `mapstructure:"SandboxMode"`
 }

@@ -4,7 +4,6 @@ The bridge service abstracts interaction with the unified LxLy bridge. It repres
 
 ## Bridge flow
 
-
 ### Bridge flow L2 -> L2
 
 The diagram below describes the basic L2 -> L2 bridge workflow.
@@ -123,7 +122,7 @@ sequenceDiagram
 
 ## Indexers
 
-The bridge service relies on specific data located on different chains (such as `bridge`, `claim`, and `token mapping` events, as well as the L1 info tree). These data are retrieved using indexers. Indexers consists of three components: driver, downloader and processor. 
+The bridge service relies on specific data located on different chains (such as `bridge`, `claim`, and `token mapping` events, as well as the L1 info tree). These data are retrieved using indexers. Indexers consists of three components: driver, downloader and processor.
 
 ### Driver
 
@@ -223,6 +222,6 @@ sequenceDiagram
 
 ## API Documentation
 
-<iframe src="assets/swagger/bridge_service/index.html" 
+<iframe src="assets/swagger/bridge_service/index.html"
   style="width: 100%; height: 90vh; border: none;"
   loading="lazy"></iframe>

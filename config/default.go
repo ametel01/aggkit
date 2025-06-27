@@ -105,6 +105,7 @@ TargetChainType = "EVM"
 URLRPCL1 = "{{L1URL}}"
 BlockFinality = "FinalizedBlock"
 WaitPeriodNextGER = "10s"
+SandboxMode = false
 	[AggOracle.EVMSender]
 		GlobalExitRootL2 = "{{L2Config.GlobalExitRootAddr}}"
 		GasOffset = 0

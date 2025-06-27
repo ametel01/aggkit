@@ -11,12 +11,13 @@ AggKit Sandbox Mode enables local development and testing with simplified bridge
 - **Full Bridge API Compatibility**: Maintains the same APIs as production AggKit
 - **Automatic Settlement**: Bridges are settled immediately without waiting for AggLayer
 - **Component Selection**: Automatically skips unnecessary components (AggSender, AggchainProofGen)
+- **Direct GER Calculation**: AggOracle calculates Global Exit Root directly from bridge events
 
 ## Configuration
 
 ### Basic Setup
 
-1. Create a sandbox configuration file (e.g., `sandbox.toml`):
+1. Create a sandbox configuration file (e.g., `config-sandbox.toml`):
 
 ```toml
 # Enable sandbox mode
@@ -27,17 +28,21 @@ SettlementDelay = "5s"
 MockFinalization = true
 InstantClaims = true
 
- [Sandbox.L1Node]
-  URL = "http://localhost:8545"
-  ChainID = 31337
+[Sandbox.L1Node]
+URL = "http://localhost:8545"
+ChainID = 31337
 
- [Sandbox.L2Node]
-  URL = "http://localhost:8546"
-  ChainID = 31338
+[Sandbox.L2Node]
+URL = "http://localhost:8546"
+ChainID = 31338
 
 # Override URLs for sandbox
 L1URL = "http://localhost:8545"
 L2URL = "http://localhost:8546"
+
+# AggOracle sandbox mode
+[AggOracle]
+SandboxMode = true
 
 # Sample bridge contract address (replace with actual)
 polygonBridgeAddr = "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
@@ -59,6 +64,7 @@ NetworkID = 31337
 | `Sandbox.L1Node.ChainID` | L1 chain identifier | Required |
 | `Sandbox.L2Node.URL` | L2 node RPC endpoint | Required |
 | `Sandbox.L2Node.ChainID` | L2 chain identifier | Required |
+| `AggOracle.SandboxMode` | Enable AggOracle sandbox mode | `false` |
 
 ## Usage
 
@@ -79,7 +85,7 @@ NetworkID = 31337
 3. **Start AggKit in Sandbox Mode**:
 
    ```bash
-   aggkit run --cfg sandbox.toml --components bridge,aggoracle
+   aggkit run --cfg config-sandbox.toml --components bridge,aggoracle
    ```
 
 ### Component Behavior in Sandbox Mode
@@ -87,17 +93,25 @@ NetworkID = 31337
 | Component | Behavior |
 |-----------|----------|
 | **Bridge** | ✅ Fully functional with instant settlement |
-| **AggOracle** | ✅ Modified for direct GER calculation |
+| **AggOracle** | ✅ Modified for direct GER calculation, bypasses AggLayer |
 | **AggSender** | ❌ Automatically skipped |
 | **AggchainProofGen** | ❌ Automatically skipped |
+
+### AggOracle Sandbox Features
+
+- **Direct GER Calculation**: Calculates Global Exit Root directly from bridge events
+- **Configurable Settlement**: Supports immediate or delayed settlement
+- **Mock Finalization**: Bypasses complex finality validation for development
+- **Bridge Data Integration**: Directly accesses bridge state for GER generation
 
 ## Development Workflow
 
 1. **Setup Environment**: Start local Anvil nodes
 2. **Deploy Contracts**: Deploy bridge contracts to both L1 and L2
-3. **Update Configuration**: Set contract addresses in `sandbox.toml`
+3. **Update Configuration**: Set contract addresses in `config-sandbox.toml`
 4. **Start AggKit**: Launch with sandbox configuration
 5. **Test Bridge Operations**: Use bridge APIs for testing
+6. **Monitor GER Updates**: AggOracle will inject GER updates directly
 
 ## API Compatibility
 
@@ -147,12 +161,17 @@ The sandbox configuration is automatically validated on startup:
    - Ensure bridge contracts are deployed to both networks
    - Verify contract addresses in configuration
 
+4. **AggOracle Issues**:
+   - Check that `AggOracle.SandboxMode = true` is set
+   - Verify bridge data is available for GER calculation
+
 ### Logs
 
 Sandbox mode provides clear logging:
 
-```
+```bash
 INFO Sandbox mode enabled - AggLayer integration disabled
+INFO AggOracle running in sandbox mode - direct GER calculation enabled
 INFO Skipping AggSender in sandbox mode
 INFO Skipping AggchainProofGen in sandbox mode
 ```
@@ -167,13 +186,16 @@ INFO Skipping AggchainProofGen in sandbox mode
 - [x] Sample configuration file
 - [x] Unit tests
 
-### Phase 2: AggOracle Sandbox Mode (Next)
+### Phase 2: AggOracle Sandbox Mode ✅
 
-- [ ] Direct GER calculation
-- [ ] Immediate settlement simulation
-- [ ] Mock finalization
+- [x] Direct GER calculation
+- [x] Immediate settlement simulation
+- [x] Mock finalization
+- [x] Bridge data integration
+- [x] Comprehensive testing
+- [x] Documentation and examples
 
-### Phase 3: Bridge Service Enhancement (Next)
+### Phase 3: Bridge Service Enhancement (Future)
 
 - [ ] Sandbox mode API responses
 - [ ] Instant claim readiness
@@ -184,7 +206,11 @@ INFO Skipping AggchainProofGen in sandbox mode
 Run the sandbox configuration tests:
 
 ```bash
+# Test sandbox configuration
 go test -v ./config -run TestSandboxConfig
+
+# Test AggOracle sandbox functionality
+go test -v ./aggoracle -run TestSandbox
 ```
 
 All tests should pass, validating:
@@ -193,3 +219,15 @@ All tests should pass, validating:
 - Validation logic
 - Component detection
 - Error handling
+- AggOracle sandbox functionality
+- GER calculation logic
+
+## Files and Structure
+
+The sandbox mode implementation includes:
+
+- `config/sandbox.go` - Sandbox configuration structures
+- `aggoracle/sandbox.go` - Sandbox AggOracle implementation
+- `aggoracle/sandbox_test.go` - Comprehensive test suite
+- `docs/sandbox_aggoracle.md` - Detailed AggOracle documentation
+- `examples/sandbox-aggoracle.toml` - Example configuration

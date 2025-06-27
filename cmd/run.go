@@ -103,8 +103,17 @@ func start(cliCtx *cli.Context) error {
 	for _, component := range components {
 		switch component {
 		case aggkitcommon.AGGORACLE:
-			aggOracle := createAggoracle(rollupDataQuerier, *cfg, l1Client, l2Client, l1InfoTreeSync)
-			go aggOracle.Start(cliCtx.Context)
+			aggOracle := createAggoracle(rollupDataQuerier, *cfg, l1Client, l2Client, l1InfoTreeSync, l1BridgeSync, l2BridgeSync)
+			
+			// Handle different oracle types (sandbox vs normal)
+			switch oracle := aggOracle.(type) {
+			case *aggoracle.SandboxAggOracle:
+				go oracle.Start(cliCtx.Context)
+			case *aggoracle.AggOracle:
+				go oracle.Start(cliCtx.Context)
+			default:
+				log.Fatalf("Unknown AggOracle type: %T", aggOracle)
+			}
 
 		case aggkitcommon.BRIDGE:
 			b := createBridgeService(
@@ -260,7 +269,9 @@ func createAggoracle(
 	l1Client,
 	l2Client aggkittypes.BaseEthereumClienter,
 	l1InfoTreeSyncer *l1infotreesync.L1InfoTreeSync,
-) *aggoracle.AggOracle {
+	l1BridgeSync *bridgesync.BridgeSync,
+	l2BridgeSync *bridgesync.BridgeSync,
+) interface{} {
 	logger := log.WithFields("module", aggkitcommon.AGGORACLE)
 	l2ChainID, err := ethermanClient.GetRollupChainID()
 	if err != nil {
@@ -319,6 +330,30 @@ func createAggoracle(
 	)
 	if err != nil {
 		logger.Fatal(err)
+	}
+
+	// Check if sandbox mode is enabled
+	if cfg.IsSandboxMode() {
+		logger.Info("Creating AggOracle in sandbox mode")
+		globalSandboxConfig := cfg.GetSandboxConfig()
+		
+		// Convert global sandbox config to aggoracle-specific config
+		aggOracleSandboxConfig := aggoracle.SandboxConfig{
+			Enabled:          globalSandboxConfig.Enabled,
+			AutoSettle:       globalSandboxConfig.AutoSettle,
+			SettlementDelay:  globalSandboxConfig.SettlementDelay,
+			MockFinalization: globalSandboxConfig.MockFinalization,
+			InstantClaims:    globalSandboxConfig.InstantClaims,
+		}
+		
+		sandboxOracle := aggoracle.NewSandboxAggOracle(
+			aggOracle,
+			aggOracleSandboxConfig,
+			l1BridgeSync,
+			l2BridgeSync,
+			logger,
+		)
+		return sandboxOracle
 	}
 
 	return aggOracle

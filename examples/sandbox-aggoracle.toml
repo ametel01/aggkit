@@ -1,0 +1,55 @@
+# AggKit Sandbox Configuration with AggOracle
+# This configuration enables full sandbox mode including the new AggOracle sandbox features
+
+# Global sandbox configuration
+[Sandbox]
+Enabled = true
+AutoSettle = true
+SettlementDelay = "2s"
+MockFinalization = true
+InstantClaims = true
+
+	[Sandbox.L1Node]
+		URL = "http://localhost:8545"
+		ChainID = 31337
+
+	[Sandbox.L2Node]
+		URL = "http://localhost:8546"
+		ChainID = 31338
+
+# AggOracle configuration with sandbox mode enabled
+[AggOracle]
+TargetChainType = "EVM"
+URLRPCL1 = "http://localhost:8545"
+BlockFinality = "LatestBlock"
+WaitPeriodNextGER = "5s"
+SandboxMode = true
+
+	[AggOracle.EVMSender]
+		GlobalExitRootL2 = "0x0000000000000000000000000000000000000001"
+		GasOffset = 80000
+		WaitPeriodMonitorTx = "1s"
+		
+		[AggOracle.EVMSender.EthTxManager]
+			FrequencyToMonitorTxs = "1s"
+			WaitTxToBeMined = "2s"
+			
+			[AggOracle.EVMSender.EthTxManager.Etherman]
+				URL = "http://localhost:8546"
+				L1ChainID = 31338
+
+# Common configuration
+[Common]
+NetworkID = 31337
+L2RPC = "http://localhost:8546"
+
+# L1 Network configuration  
+[L1NetworkConfig]
+URL = "http://localhost:8545"
+L1ChainID = 31337
+
+# Logging for development
+[Log]
+Environment = "development"
+Level = "debug"
+Outputs = ["stderr"]
