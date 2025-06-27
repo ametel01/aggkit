@@ -78,6 +78,9 @@ type ClaimProof struct {
 
 	// L1 info tree leaf data associated with the claim
 	L1InfoTreeLeaf L1InfoTreeLeafResponse `json:"l1_info_tree_leaf"`
+	
+	// Sandbox mode metadata (included when running in sandbox mode)
+	SandboxMetadata *SandboxMetadata `json:"sandbox_metadata,omitempty"`
 }
 
 // BridgesResult contains the bridges and the total count of bridges
@@ -88,6 +91,9 @@ type BridgesResult struct {
 
 	// Total number of bridge events
 	Count int `json:"count" example:"42"`
+	
+	// Sandbox mode metadata (included when running in sandbox mode)
+	SandboxMetadata *SandboxMetadata `json:"sandbox_metadata,omitempty"`
 }
 
 // BridgeResponse represents a bridge event response
@@ -140,6 +146,9 @@ type BridgeResponse struct {
 
 	// Unique hash representing the bridge event, often used as an identifier
 	BridgeHash Hash `json:"bridge_hash" example:"0xabc1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcd"`
+	
+	// Sandbox mode metadata (included when running in sandbox mode)
+	SandboxMetadata *SandboxMetadata `json:"sandbox_metadata,omitempty"`
 }
 
 // ClaimsResult contains the list of claim records and the total count
@@ -150,6 +159,9 @@ type ClaimsResult struct {
 
 	// Total number of matching claims
 	Count int `json:"count" example:"42"`
+	
+	// Sandbox mode metadata (included when running in sandbox mode)
+	SandboxMetadata *SandboxMetadata `json:"sandbox_metadata,omitempty"`
 }
 
 // ClaimResponse represents a claim event response
@@ -308,6 +320,9 @@ type L1InfoTreeLeafResponse struct {
 
 	// Unique hash identifying this leaf node
 	Hash Hash `json:"hash" example:"0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"`
+	
+	// Sandbox mode metadata (included when running in sandbox mode)
+	SandboxMetadata *SandboxMetadata `json:"sandbox_metadata,omitempty"`
 }
 
 // SyncStatus represents the synchronization status of the bridge service for both L1 and L2 networks
@@ -318,6 +333,9 @@ type L1InfoTreeLeafResponse struct {
 type SyncStatus struct {
 	L1Info *NetworkSyncInfo `json:"l1_info"`
 	L2Info *NetworkSyncInfo `json:"l2_info"`
+	
+	// Sandbox mode metadata (included when running in sandbox mode)
+	SandboxMetadata *SandboxMetadata `json:"sandbox_metadata,omitempty"`
 }
 
 // NetworkSyncInfo represents the synchronization status of a single network (L1 or L2)
@@ -338,4 +356,29 @@ type HealthCheckResponse struct {
 	Status  string    `json:"status"`
 	Time    time.Time `json:"time"`
 	Version string    `json:"version"`
+}
+
+// SandboxMetadata contains metadata specific to sandbox mode operations
+// @Description Sandbox mode specific metadata for development and testing
+type SandboxMetadata struct {
+	// Indicates if the response is from sandbox mode
+	SandboxMode bool `json:"sandbox_mode" example:"true"`
+	
+	// Indicates if settlements are automatic in sandbox mode
+	AutoSettle bool `json:"auto_settle" example:"true"`
+	
+	// Indicates if claims are instantly ready in sandbox mode
+	InstantClaims bool `json:"instant_claims" example:"true"`
+	
+	// Indicates if mock finalization is enabled
+	MockFinalization bool `json:"mock_finalization" example:"true"`
+	
+	// Settlement delay configured for sandbox mode
+	SettlementDelay string `json:"settlement_delay" example:"5s"`
+	
+	// Timestamp when the sandbox response was generated
+	GeneratedAt int64 `json:"generated_at" example:"1684500000"`
+	
+	// Additional development metadata
+	DevMetadata map[string]interface{} `json:"dev_metadata,omitempty"`
 }

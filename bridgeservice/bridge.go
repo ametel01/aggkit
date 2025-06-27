@@ -26,6 +26,7 @@ import (
 	"github.com/agglayer/aggkit/bridgeservice/types"
 	"github.com/agglayer/aggkit/bridgesync"
 	aggkitcommon "github.com/agglayer/aggkit/common"
+	"github.com/agglayer/aggkit/config"
 	"github.com/agglayer/aggkit/l1infotreesync"
 	"github.com/agglayer/aggkit/log"
 	tree "github.com/agglayer/aggkit/tree/types"
@@ -63,25 +64,27 @@ var (
 )
 
 type Config struct {
-	Logger       *log.Logger
-	Address      string
-	WriteTimeout time.Duration
-	ReadTimeout  time.Duration
-	NetworkID    uint32
+	Logger        *log.Logger
+	Address       string
+	WriteTimeout  time.Duration
+	ReadTimeout   time.Duration
+	NetworkID     uint32
+	SandboxConfig *config.SandboxConfig
 }
 
 // BridgeService contains implementations for the bridge service endpoints
 type BridgeService struct {
-	logger       *log.Logger
-	address      string
-	meter        metric.Meter
-	readTimeout  time.Duration
-	writeTimeout time.Duration
-	networkID    uint32
-	l1InfoTree   L1InfoTreer
-	injectedGERs LastGERer
-	bridgeL1     Bridger
-	bridgeL2     Bridger
+	logger        *log.Logger
+	address       string
+	meter         metric.Meter
+	readTimeout   time.Duration
+	writeTimeout  time.Duration
+	networkID     uint32
+	l1InfoTree    L1InfoTreer
+	injectedGERs  LastGERer
+	bridgeL1      Bridger
+	bridgeL2      Bridger
+	sandboxConfig *config.SandboxConfig
 
 	router *gin.Engine
 }
@@ -96,6 +99,11 @@ func New(
 ) *BridgeService {
 	meter := otel.Meter(meterName)
 	cfg.Logger.Infof("starting bridge service (network id=%d, address=%s)", cfg.NetworkID, cfg.Address)
+
+	// Log sandbox mode status
+	if cfg.SandboxConfig != nil && cfg.SandboxConfig.Enabled {
+		cfg.Logger.Info("Bridge service starting in sandbox mode")
+	}
 
 	// The GIN_MODE environment variable controls the mode of the Gin framework.
 	// Valid values are "debug", "release", and "test". If an invalid value is provided,
@@ -115,17 +123,18 @@ func New(
 	router.Use(LoggerHandler(cfg.Logger))
 
 	b := &BridgeService{
-		logger:       cfg.Logger,
-		address:      cfg.Address,
-		meter:        meter,
-		readTimeout:  cfg.ReadTimeout,
-		writeTimeout: cfg.WriteTimeout,
-		networkID:    cfg.NetworkID,
-		l1InfoTree:   l1InfoTree,
-		injectedGERs: injectedGERs,
-		bridgeL1:     bridgeL1,
-		bridgeL2:     bridgeL2,
-		router:       router,
+		logger:        cfg.Logger,
+		address:       cfg.Address,
+		meter:         meter,
+		readTimeout:   cfg.ReadTimeout,
+		writeTimeout:  cfg.WriteTimeout,
+		networkID:     cfg.NetworkID,
+		l1InfoTree:    l1InfoTree,
+		injectedGERs:  injectedGERs,
+		bridgeL1:      bridgeL1,
+		bridgeL2:      bridgeL2,
+		sandboxConfig: cfg.SandboxConfig,
+		router:        router,
 	}
 
 	b.registerRoutes()
@@ -342,11 +351,28 @@ func (b *BridgeService) GetBridgesHandler(c *gin.Context) {
 	b.logger.Debugf("successfully retrieved %d bridges for network %d", count, networkID)
 	bridgeResponses := aggkitcommon.MapSlice(bridges, NewBridgeResponse)
 
-	c.JSON(http.StatusOK,
-		types.BridgesResult{
-			Bridges: bridgeResponses,
-			Count:   count,
-		})
+	// Enhance bridge responses with sandbox metadata
+	for _, bridgeResponse := range bridgeResponses {
+		b.enhanceBridgeResponseWithSandbox(bridgeResponse)
+	}
+
+	result := types.BridgesResult{
+		Bridges: bridgeResponses,
+		Count:   count,
+	}
+
+	// Add sandbox metadata to the result if in sandbox mode
+	if sandboxMetadata := b.createSandboxMetadata(); sandboxMetadata != nil {
+		result.SandboxMetadata = sandboxMetadata
+		result.SandboxMetadata.DevMetadata["total_bridges"] = count
+		result.SandboxMetadata.DevMetadata["page_info"] = map[string]interface{}{
+			"page_number": pageNumber,
+			"page_size":   pageSize,
+		}
+		b.logger.Debugf("Enhanced %d bridge responses with sandbox metadata", len(bridgeResponses))
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // GetClaimsHandler retrieves paginated claims for a given network.
@@ -425,11 +451,26 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 
 	claimResponses := aggkitcommon.MapSlice(claims, NewClaimResponse)
 
-	c.JSON(http.StatusOK,
-		types.ClaimsResult{
-			Claims: claimResponses,
-			Count:  count,
-		})
+	result := types.ClaimsResult{
+		Claims: claimResponses,
+		Count:  count,
+	}
+
+	// Add sandbox metadata to claims result if in sandbox mode
+	if sandboxMetadata := b.createSandboxMetadata(); sandboxMetadata != nil {
+		result.SandboxMetadata = sandboxMetadata
+		result.SandboxMetadata.DevMetadata["total_claims"] = count
+
+		// Add instant claims information for sandbox mode
+		if b.sandboxConfig.InstantClaims {
+			result.SandboxMetadata.DevMetadata["claims_instantly_ready"] = true
+			result.SandboxMetadata.DevMetadata["claim_processing_time"] = "0s"
+		}
+
+		b.logger.Debugf("Enhanced %d claim responses with sandbox metadata", len(claimResponses))
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // @Summary Get token mappings
@@ -702,6 +743,10 @@ func (b *BridgeService) InjectedL1InfoLeafHandler(c *gin.Context) {
 	}
 
 	l1InfoLeafResponse := NewL1InfoTreeLeafResponse(l1InfoLeaf)
+
+	// Enhance L1 info tree leaf response with sandbox metadata
+	b.enhanceL1InfoTreeLeafResponseWithSandbox(l1InfoLeafResponse)
+
 	c.JSON(http.StatusOK, l1InfoLeafResponse)
 }
 
@@ -807,11 +852,19 @@ func (b *BridgeService) ClaimProofHandler(c *gin.Context) {
 
 	infoResponse := NewL1InfoTreeLeafResponse(info)
 
-	c.JSON(http.StatusOK, types.ClaimProof{
+	// Enhance L1 info tree leaf response with sandbox metadata
+	b.enhanceL1InfoTreeLeafResponseWithSandbox(infoResponse)
+
+	claimProof := types.ClaimProof{
 		ProofLocalExitRoot:  types.ConvertToProofResponse(proofLocalExitRoot),
 		ProofRollupExitRoot: types.ConvertToProofResponse(proofRollupExitRoot),
 		L1InfoTreeLeaf:      *infoResponse,
-	})
+	}
+
+	// Enhance claim proof with sandbox metadata
+	b.enhanceClaimProofWithSandbox(&claimProof)
+
+	c.JSON(http.StatusOK, claimProof)
 }
 
 // GetLastReorgEventHandler returns the most recent reorganization event for the specified network.
@@ -937,6 +990,15 @@ func (b *BridgeService) GetSyncStatusHandler(c *gin.Context) {
 	syncStatus.L2Info.BridgeDepositCount = uint32(bridgesCount)
 	syncStatus.L2Info.ContractDepositCount = l2ContractDepositCount
 	syncStatus.L2Info.IsSynced = syncStatus.L2Info.ContractDepositCount == syncStatus.L2Info.BridgeDepositCount
+
+	// Add sandbox metadata to sync status
+	if sandboxMetadata := b.createSandboxMetadata(); sandboxMetadata != nil {
+		syncStatus.SandboxMetadata = sandboxMetadata
+		syncStatus.SandboxMetadata.DevMetadata["sync_mode"] = "sandbox_instant"
+		if b.sandboxConfig.AutoSettle {
+			syncStatus.SandboxMetadata.DevMetadata["settlement_mode"] = "automatic"
+		}
+	}
 
 	c.JSON(http.StatusOK, syncStatus)
 }
@@ -1074,4 +1136,76 @@ func (b *BridgeService) setupRequest(
 	counter.Add(ctx, 1)
 
 	return ctx, cancel, pageNumber, pageSize, nil
+}
+
+// isSandboxMode returns true if the bridge service is running in sandbox mode
+func (b *BridgeService) isSandboxMode() bool {
+	return b.sandboxConfig != nil && b.sandboxConfig.Enabled
+}
+
+// createSandboxMetadata creates sandbox metadata for responses
+func (b *BridgeService) createSandboxMetadata() *types.SandboxMetadata {
+	if !b.isSandboxMode() {
+		return nil
+	}
+
+	return &types.SandboxMetadata{
+		SandboxMode:      true,
+		AutoSettle:       b.sandboxConfig.AutoSettle,
+		InstantClaims:    b.sandboxConfig.InstantClaims,
+		MockFinalization: b.sandboxConfig.MockFinalization,
+		SettlementDelay:  b.sandboxConfig.SettlementDelay.String(),
+		GeneratedAt:      time.Now().Unix(),
+		DevMetadata: map[string]interface{}{
+			"bridge_mode": "sandbox",
+			"l1_chain_id": b.sandboxConfig.L1Node.ChainID,
+			"l2_chain_id": b.sandboxConfig.L2Node.ChainID,
+		},
+	}
+}
+
+// enhanceBridgeResponseWithSandbox adds sandbox metadata to bridge responses
+func (b *BridgeService) enhanceBridgeResponseWithSandbox(bridge *types.BridgeResponse) {
+	if sandboxMetadata := b.createSandboxMetadata(); sandboxMetadata != nil {
+		bridge.SandboxMetadata = sandboxMetadata
+
+		// Add sandbox-specific enhancements
+		if b.sandboxConfig.InstantClaims {
+			bridge.SandboxMetadata.DevMetadata["claim_ready_instantly"] = true
+		}
+
+		if b.sandboxConfig.MockFinalization {
+			bridge.SandboxMetadata.DevMetadata["finalization_bypassed"] = true
+		}
+	}
+}
+
+// enhanceL1InfoTreeLeafResponseWithSandbox adds sandbox metadata to L1 info tree leaf responses
+func (b *BridgeService) enhanceL1InfoTreeLeafResponseWithSandbox(leaf *types.L1InfoTreeLeafResponse) {
+	if sandboxMetadata := b.createSandboxMetadata(); sandboxMetadata != nil {
+		leaf.SandboxMetadata = sandboxMetadata
+
+		// Add sandbox-specific enhancements for L1 info tree
+		if b.sandboxConfig.MockFinalization {
+			leaf.SandboxMetadata.DevMetadata["ger_calculation_method"] = "direct_bridge_events"
+		}
+	}
+}
+
+// enhanceClaimProofWithSandbox adds sandbox metadata to claim proof responses
+func (b *BridgeService) enhanceClaimProofWithSandbox(claimProof *types.ClaimProof) {
+	if sandboxMetadata := b.createSandboxMetadata(); sandboxMetadata != nil {
+		claimProof.SandboxMetadata = sandboxMetadata
+
+		// Add sandbox-specific enhancements for claim proofs
+		if b.sandboxConfig.InstantClaims {
+			claimProof.SandboxMetadata.DevMetadata["claim_verification"] = "instant_sandbox_mode"
+			claimProof.SandboxMetadata.DevMetadata["proof_method"] = "simplified_local_calculation"
+		}
+	}
+}
+
+// isClaimInstantlyReady returns true if claims are instantly ready in sandbox mode
+func (b *BridgeService) isClaimInstantlyReady() bool {
+	return b.isSandboxMode() && b.sandboxConfig.InstantClaims
 }

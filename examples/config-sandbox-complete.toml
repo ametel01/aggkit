@@ -1,0 +1,179 @@
+# AggKit Complete Sandbox Configuration
+# This configuration enables full sandbox mode with all implemented features
+
+[Log]
+Level = "debug"
+Outputs = ["stdout"]
+
+[Telemetry]
+PrometheusAddr = "127.0.0.1:8080"
+
+[RPC]
+Host = "127.0.0.1"
+Port = 8555
+ReadTimeout = "15s"
+WriteTimeout = "15s"
+MaxRequestsPerIPAndSecond = 1000
+
+[Common]
+NetworkID = 1338
+# Ethereum mainnet
+IsValidiumMode = false
+
+[Etherman]
+# L1 Anvil node
+URL = "http://localhost:8545"
+ForkID = 9
+MaxTxPerBatch = 300
+PolygonBridgeAddress = "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
+L1ChainID = 31337
+
+[EthTxManager]
+FrequencyToMonitorTxs = "10s"
+WaitTxToBeMined = "30s"
+GetReceiptMaxTime = "60s"
+GetReceiptWaitInterval = "5s"
+PrivateKeys = [
+  {Path = "", Password = ""},
+]
+
+[L2GasPriceSuggester]
+Type = "follower"
+UpdatePeriod = "10s"
+Factor = 0.5
+DefaultGasPrice = 1000000000
+MaxGasPrice = 0
+
+[REST]
+Port = 5577
+Host = "127.0.0.1"
+ReadTimeout = "30s"
+WriteTimeout = "30s"
+MaxRequestsPerIPAndSecond = 1000
+
+[Database]
+# SQLite for sandbox mode
+Driver = "sqlite3"
+Name = "aggkit_sandbox.db"
+Host = ""
+Port = ""
+User = ""
+Password = ""
+MaxConns = 0
+
+# =============================================================================
+# SANDBOX CONFIGURATION - PHASE 1: Core Configuration
+# =============================================================================
+
+[Sandbox]
+Enabled = true
+AutoSettle = true
+SettlementDelay = "5s"
+MockFinalization = true
+InstantClaims = true
+
+[Sandbox.L1Node]
+URL = "http://localhost:8545"
+ChainID = 31337
+Name = "Local L1 (Anvil)"
+
+[Sandbox.L2Node]
+URL = "http://localhost:8546"
+ChainID = 31338
+Name = "Local L2 (Sovereign)"
+
+# =============================================================================
+# AGGORACLE CONFIGURATION - PHASE 2: Sandbox AggOracle
+# =============================================================================
+
+[AggOracle]
+# Enable sandbox mode for AggOracle
+SandboxMode = true
+# Regular AggOracle configuration
+TargetChainID = 31338
+L1URL = "http://localhost:8545"
+L2URL = "http://localhost:8546"
+EVMSender = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+EVMPrivateKey = {Path = "", Password = ""}
+GasOffset = 0
+WaitPeriodNextGER = "10s"
+WaitPeriodMonitorTx = "10s"
+WaitPeriodFinalizedRootSignal = "10s"
+
+# =============================================================================
+# BRIDGE SERVICE CONFIGURATION - PHASE 3: Enhanced Bridge Service
+# =============================================================================
+
+# Note: Bridge service will automatically use sandbox mode when Sandbox.Enabled = true
+# All bridge API responses will include sandbox metadata
+
+# =============================================================================
+# SKIP AGGSENDER IN SANDBOX MODE
+# =============================================================================
+
+# AggSender configuration is present but will be skipped in sandbox mode
+[AggSender]
+# This will be ignored when sandbox mode is enabled
+StoragePath = "path_to_storage"
+AggLayerURL = "http://localhost:8080"
+BlockGetInterval = "10s"
+CheckSettledInterval = "10s"
+MaxWaitForL1InfoRootSignal = "30s"
+PrivateKey = {Path = "", Password = ""}
+
+# =============================================================================
+# OPTIONAL: BRIDGESYNC CONFIGURATION
+# =============================================================================
+
+[BridgeSync]
+ChainID = 31337
+RetryAfterErrorPeriod = "1s"
+MaxRetryAttemptsAfterError = -1
+WaitForNewBlocksPeriod = "100ms"
+InitialBlock = 0
+SyncChunkSize = 100
+SyncInterval = "10s"
+
+# =============================================================================
+# OPTIONAL: L1INFOTREESYNC CONFIGURATION
+# =============================================================================
+
+[L1InfoTreeSync]
+ChainID = 31337
+RetryAfterErrorPeriod = "1s"
+MaxRetryAttemptsAfterError = -1
+WaitForNewBlocksPeriod = "100ms"
+InitialBlock = 0
+SyncChunkSize = 100
+SyncInterval = "10s"
+
+# =============================================================================
+# OPTIONAL: LASTGERSYNC CONFIGURATION  
+# =============================================================================
+
+[LastGERSync]
+ChainID = 31337
+RetryAfterErrorPeriod = "1s"
+MaxRetryAttemptsAfterError = -1
+WaitForNewBlocksPeriod = "100ms"
+InitialBlock = 0
+SyncChunkSize = 100
+SyncInterval = "10s"
+
+# =============================================================================
+# DEVELOPMENT AND TESTING SETTINGS
+# =============================================================================
+
+# Enable detailed logging for debugging
+[Sandbox.DevSettings]
+LogBridgeEvents = true
+LogGERCalculations = true
+LogProofGeneration = true
+LogClaimProcessing = true
+
+# Mock data for testing (optional)
+[Sandbox.MockData]
+EnableMockBridges = false
+MockBridgeCount = 10
+MockClaimCount = 5
+MockProofData = false 

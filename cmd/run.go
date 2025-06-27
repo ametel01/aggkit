@@ -104,7 +104,7 @@ func start(cliCtx *cli.Context) error {
 		switch component {
 		case aggkitcommon.AGGORACLE:
 			aggOracle := createAggoracle(rollupDataQuerier, *cfg, l1Client, l2Client, l1InfoTreeSync, l1BridgeSync, l2BridgeSync)
-			
+
 			// Handle different oracle types (sandbox vs normal)
 			switch oracle := aggOracle.(type) {
 			case *aggoracle.SandboxAggOracle:
@@ -116,6 +116,12 @@ func start(cliCtx *cli.Context) error {
 			}
 
 		case aggkitcommon.BRIDGE:
+			var sandboxConfig *config.SandboxConfig
+			if cfg.IsSandboxMode() {
+				sandboxCfg := cfg.GetSandboxConfig()
+				sandboxConfig = &sandboxCfg
+			}
+
 			b := createBridgeService(
 				cfg.REST,
 				cfg.Common.NetworkID,
@@ -123,6 +129,7 @@ func start(cliCtx *cli.Context) error {
 				lastGERSync,
 				l1BridgeSync,
 				l2BridgeSync,
+				sandboxConfig,
 			)
 
 			go b.Start(cliCtx.Context)
@@ -336,7 +343,7 @@ func createAggoracle(
 	if cfg.IsSandboxMode() {
 		logger.Info("Creating AggOracle in sandbox mode")
 		globalSandboxConfig := cfg.GetSandboxConfig()
-		
+
 		// Convert global sandbox config to aggoracle-specific config
 		aggOracleSandboxConfig := aggoracle.SandboxConfig{
 			Enabled:          globalSandboxConfig.Enabled,
@@ -345,7 +352,7 @@ func createAggoracle(
 			MockFinalization: globalSandboxConfig.MockFinalization,
 			InstantClaims:    globalSandboxConfig.InstantClaims,
 		}
-		
+
 		sandboxOracle := aggoracle.NewSandboxAggOracle(
 			aggOracle,
 			aggOracleSandboxConfig,
@@ -659,15 +666,17 @@ func createBridgeService(
 	injectedGERs *lastgersync.LastGERSync,
 	bridgeL1 *bridgesync.BridgeSync,
 	bridgeL2 *bridgesync.BridgeSync,
+	sandboxConfig *config.SandboxConfig,
 ) *bridgeservice.BridgeService {
 	logger := log.WithFields("module", aggkitcommon.BRIDGE)
 
 	bridgeCfg := &bridgeservice.Config{
-		Logger:       logger,
-		Address:      cfg.Address(),
-		ReadTimeout:  cfg.ReadTimeout.Duration,
-		WriteTimeout: cfg.WriteTimeout.Duration,
-		NetworkID:    l2NetworkID,
+		Logger:        logger,
+		Address:       cfg.Address(),
+		ReadTimeout:   cfg.ReadTimeout.Duration,
+		WriteTimeout:  cfg.WriteTimeout.Duration,
+		NetworkID:     l2NetworkID,
+		SandboxConfig: sandboxConfig,
 	}
 
 	return bridgeservice.New(
