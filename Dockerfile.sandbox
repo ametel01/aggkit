@@ -1,0 +1,86 @@
+# AggKit Sandbox Mode Docker Image
+# This image runs AggKit exclusively in sandbox mode for local development
+
+# Build stage
+FROM golang:1.24-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git make gcc musl-dev linux-headers
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Copy source code first (needed for local modules)
+COPY . .
+
+# Remove test files to avoid dependency issues
+RUN find . -name "*_test.go" -delete && \
+    rm -rf test/ tests/ && \
+    find . -name "*.test" -delete
+
+# Download dependencies without test packages
+RUN go mod tidy && go mod download
+
+# Build the application
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o aggkit-sandbox ./cmd
+
+# Runtime stage
+FROM alpine:3.18
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    sqlite \
+    curl \
+    jq \
+    bash
+
+# Create app user
+RUN addgroup -g 1001 -S aggkit && \
+    adduser -u 1001 -S aggkit -G aggkit
+
+# Create necessary directories
+RUN mkdir -p /app/config /app/data /app/logs && \
+    chown -R aggkit:aggkit /app
+
+# Copy binary from builder
+COPY --from=builder /app/aggkit-sandbox /app/aggkit-sandbox
+RUN chmod +x /app/aggkit-sandbox
+
+# Copy entrypoint script
+COPY docker/entrypoint-sandbox.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Set working directory
+WORKDIR /app
+
+# Switch to app user
+USER aggkit
+
+# Expose ports
+EXPOSE 5577 8080 8555
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5577/ || exit 1
+
+# Set default environment variables for sandbox mode
+ENV AGGKIT_SANDBOX_ENABLED=true \
+    AGGKIT_LOG_LEVEL=info \
+    AGGKIT_REST_PORT=5577 \
+    AGGKIT_REST_HOST=0.0.0.0 \
+    AGGKIT_RPC_PORT=8555 \
+    AGGKIT_RPC_HOST=0.0.0.0 \
+    AGGKIT_TELEMETRY_PORT=8080 \
+    AGGKIT_COMPONENTS=bridge,aggoracle \
+    AGGKIT_DATABASE_DRIVER=sqlite3 \
+    AGGKIT_DATABASE_NAME=/app/data/aggkit_sandbox.db
+
+# Entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Default command
+CMD ["run"] 

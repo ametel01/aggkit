@@ -1,0 +1,47 @@
+version: '3.8'
+
+# Simplified AggKit Sandbox Setup
+# This is a minimal setup for quick development
+
+services:
+  # L1 Node (Ethereum)
+  l1-node:
+    image: ghcr.io/foundry-rs/foundry:latest
+    ports:
+      - "8545:8545"
+    command: anvil --host 0.0.0.0 --port 8545 --chain-id 31337 --block-time 2
+    networks:
+      - aggkit
+
+  # L2 Node (Sovereign)
+  l2-node:
+    image: ghcr.io/foundry-rs/foundry:latest
+    ports:
+      - "8546:8545"
+    command: anvil --host 0.0.0.0 --port 8545 --chain-id 31338 --block-time 3
+    networks:
+      - aggkit
+
+  # AggKit Sandbox
+  aggkit:
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
+    ports:
+      - "5577:5577"  # Bridge API
+      - "8080:8080"  # Metrics
+    environment:
+      AGGKIT_L1_URL: "http://l1-node:8545"
+      AGGKIT_L2_URL: "http://l2-node:8545"
+      AGGKIT_LOG_LEVEL: "info"
+      AGGKIT_WAIT_FOR_L1: "true"
+      AGGKIT_WAIT_FOR_L2: "true"
+    depends_on:
+      - l1-node
+      - l2-node
+    networks:
+      - aggkit
+
+networks:
+  aggkit:
+    driver: bridge 
