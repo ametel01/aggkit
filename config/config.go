@@ -190,6 +190,9 @@ type Config struct {
 	// L1NetworkConfig represents the L1 network config and contains RPC URL alongside L1 contract addresses.
 	L1NetworkConfig L1NetworkConfig
 
+	// Sandbox configuration for local development environment
+	Sandbox SandboxConfig
+
 	// REST contains the configuration settings for the REST service in the Aggkit
 	REST common.RESTConfig
 

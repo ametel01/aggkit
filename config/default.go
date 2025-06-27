@@ -66,6 +66,19 @@ RollupAddr = "{{L1Config.polygonZkEVMAddress}}"
 RollupManagerAddr = "{{L1Config.polygonRollupManagerAddress}}"
 GlobalExitRootManagerAddr = "{{L1Config.polygonZkEVMGlobalExitRootAddress}}"
 
+[Sandbox]
+Enabled = false
+AutoSettle = true
+SettlementDelay = "5s"
+MockFinalization = true
+InstantClaims = true
+	[Sandbox.L1Node]
+		URL = "http://localhost:8545"
+		ChainID = 31337
+	[Sandbox.L2Node]
+		URL = "http://localhost:8546"
+		ChainID = 31338
+
 [ReorgDetectorL1]
 DBPath = "{{PathRWData}}/reorgdetectorl1.sqlite"
 FinalizedBlock = "FinalizedBlock"

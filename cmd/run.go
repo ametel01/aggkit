@@ -49,11 +49,21 @@ func start(cliCtx *cli.Context) error {
 
 	log.Init(cfg.Log)
 
+	// Validate sandbox configuration
+	if err := cfg.ValidateSandboxConfig(); err != nil {
+		return fmt.Errorf("sandbox configuration validation failed: %w", err)
+	}
+
 	if cfg.Log.Environment == log.EnvironmentDevelopment {
 		aggkit.PrintVersion(os.Stdout)
 		log.Info("Starting application")
 	} else if cfg.Log.Environment == log.EnvironmentProduction {
 		logVersion()
+	}
+
+	// Log sandbox mode status
+	if cfg.IsSandboxMode() {
+		log.Info("Sandbox mode enabled - AggLayer integration disabled")
 	}
 
 	if cfg.Prometheus.Enabled {
@@ -108,6 +118,10 @@ func start(cliCtx *cli.Context) error {
 
 			go b.Start(cliCtx.Context)
 		case aggkitcommon.AGGSENDER:
+			if cfg.IsSandboxMode() {
+				log.Info("Skipping AggSender in sandbox mode")
+				continue
+			}
 			aggsender, err := createAggSender(
 				cliCtx.Context,
 				cfg.AggSender,
@@ -124,6 +138,10 @@ func start(cliCtx *cli.Context) error {
 
 			go aggsender.Start(cliCtx.Context)
 		case aggkitcommon.AGGCHAINPROOFGEN:
+			if cfg.IsSandboxMode() {
+				log.Info("Skipping AggchainProofGen in sandbox mode")
+				continue
+			}
 			aggchainProofGen, err := createAggchainProofGen(
 				cliCtx.Context,
 				cfg.AggchainProofGen,
