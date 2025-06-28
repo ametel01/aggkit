@@ -2,29 +2,30 @@ package config
 
 import (
 	"fmt"
-	"time"
+
+	"github.com/agglayer/aggkit/config/types"
 )
 
 // SandboxConfig represents the configuration for sandbox mode operation
 type SandboxConfig struct {
 	// Enabled determines if sandbox mode is active
 	Enabled bool `mapstructure:"Enabled"`
-	
+
 	// AutoSettle automatically settles bridge operations without AggLayer
 	AutoSettle bool `mapstructure:"AutoSettle"`
-	
+
 	// SettlementDelay adds configurable delay to simulate real-world timing
-	SettlementDelay time.Duration `mapstructure:"SettlementDelay"`
-	
+	SettlementDelay types.Duration `mapstructure:"SettlementDelay"`
+
 	// MockFinalization bypasses complex finality validation
 	MockFinalization bool `mapstructure:"MockFinalization"`
-	
+
 	// InstantClaims makes bridge claims immediately ready
 	InstantClaims bool `mapstructure:"InstantClaims"`
-	
+
 	// L1Node configuration for sandbox L1 node
 	L1Node SandboxNodeConfig `mapstructure:"L1Node"`
-	
+
 	// L2Node configuration for sandbox L2 node
 	L2Node SandboxNodeConfig `mapstructure:"L2Node"`
 }
@@ -33,7 +34,7 @@ type SandboxConfig struct {
 type SandboxNodeConfig struct {
 	// URL is the RPC endpoint for the node
 	URL string `mapstructure:"URL"`
-	
+
 	// ChainID is the chain identifier
 	ChainID uint64 `mapstructure:"ChainID"`
 }
@@ -76,9 +77,9 @@ func (c *Config) ValidateSandboxConfig() error {
 	}
 
 	// Validate settlement delay
-	if c.Sandbox.SettlementDelay < 0 {
+	if c.Sandbox.SettlementDelay.Duration < 0 {
 		return fmt.Errorf("sandbox settlement delay cannot be negative")
 	}
 
 	return nil
-} 
+}

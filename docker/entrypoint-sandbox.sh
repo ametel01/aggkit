@@ -7,45 +7,62 @@ set -e
 echo "=== AggKit Sandbox Mode ==="
 echo "Starting AggKit in sandbox mode..."
 
-# Default values
-AGGKIT_CONFIG_PATH=${AGGKIT_CONFIG_PATH:-/app/config/aggkit-sandbox.toml}
-AGGKIT_SANDBOX_ENABLED=${AGGKIT_SANDBOX_ENABLED:-true}
+# Default values - use /tmp for config to avoid permission issues
+AGGKIT_CONFIG_PATH=${AGGKIT_CONFIG_PATH:-/tmp/aggkit-sandbox.toml}
+AGGKIT_SANDBOX_ENABLED=${AGGKIT_SANDBOX_ENABLED:-"true"}
 AGGKIT_LOG_LEVEL=${AGGKIT_LOG_LEVEL:-info}
-AGGKIT_COMPONENTS=${AGGKIT_COMPONENTS:-bridge,aggoracle}
+AGGKIT_COMPONENTS=${AGGKIT_COMPONENTS:-"bridge,aggoracle"}
 
-# Network configuration
-AGGKIT_NETWORK_ID=${AGGKIT_NETWORK_ID:-1338}
-AGGKIT_L1_CHAIN_ID=${AGGKIT_L1_CHAIN_ID:-31337}
-AGGKIT_L2_CHAIN_ID=${AGGKIT_L2_CHAIN_ID:-31338}
-AGGKIT_L1_URL=${AGGKIT_L1_URL:-http://anvil-l1:8545}
-AGGKIT_L2_URL=${AGGKIT_L2_URL:-http://anvil-l2:8545}
+  # Network configuration
+  AGGKIT_NETWORK_ID=${AGGKIT_NETWORK_ID:-1338}
+  AGGKIT_L1_CHAIN_ID=${CHAIN_ID_MAINNET:-"1"}
+  AGGKIT_L2_CHAIN_ID=${CHAIN_ID_AGGLAYER_1:-"1101"}
+  AGGKIT_L1_URL=${AGGKIT_L1_URL:-"http://anvil-l1:8545"}
+  AGGKIT_L2_URL=${AGGKIT_L2_URL:-"http://anvil-l2:8545"}
 
 # Service configuration
-AGGKIT_REST_HOST=${AGGKIT_REST_HOST:-0.0.0.0}
-AGGKIT_REST_PORT=${AGGKIT_REST_PORT:-5577}
+AGGKIT_REST_HOST=${AGGKIT_REST_HOST:-"0.0.0.0"}
+AGGKIT_REST_PORT=${AGGKIT_REST_PORT:-"5577"}
 AGGKIT_RPC_HOST=${AGGKIT_RPC_HOST:-0.0.0.0}
 AGGKIT_RPC_PORT=${AGGKIT_RPC_PORT:-8555}
 AGGKIT_TELEMETRY_PORT=${AGGKIT_TELEMETRY_PORT:-8080}
 
 # Database configuration
-AGGKIT_DATABASE_DRIVER=${AGGKIT_DATABASE_DRIVER:-sqlite3}
-AGGKIT_DATABASE_NAME=${AGGKIT_DATABASE_NAME:-/app/data/aggkit_sandbox.db}
+AGGKIT_DATABASE_DRIVER=${AGGKIT_DATABASE_DRIVER:-"sqlite"}
+AGGKIT_DATABASE_NAME=${AGGKIT_DATABASE_NAME:-"/app/data/aggkit_sandbox.db"}
 
 # Sandbox specific configuration
-AGGKIT_SANDBOX_AUTO_SETTLE=${AGGKIT_SANDBOX_AUTO_SETTLE:-true}
-AGGKIT_SANDBOX_SETTLEMENT_DELAY=${AGGKIT_SANDBOX_SETTLEMENT_DELAY:-5s}
-AGGKIT_SANDBOX_MOCK_FINALIZATION=${AGGKIT_SANDBOX_MOCK_FINALIZATION:-true}
-AGGKIT_SANDBOX_INSTANT_CLAIMS=${AGGKIT_SANDBOX_INSTANT_CLAIMS:-true}
+AGGKIT_SANDBOX_AUTO_SETTLE=${AGGKIT_SANDBOX_AUTO_SETTLE:-"true"}
+AGGKIT_SANDBOX_SETTLEMENT_DELAY=${AGGKIT_SANDBOX_SETTLEMENT_DELAY:-"5s"}
+AGGKIT_SANDBOX_MOCK_FINALIZATION=${AGGKIT_SANDBOX_MOCK_FINALIZATION:-"true"}
+AGGKIT_SANDBOX_INSTANT_CLAIMS=${AGGKIT_SANDBOX_INSTANT_CLAIMS:-"true"}
 
 # Contract addresses (can be overridden via env vars)
-AGGKIT_POLYGON_BRIDGE_ADDRESS=${AGGKIT_POLYGON_BRIDGE_ADDRESS:-0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe}
+POLYGON_ZKEVM_L1=${POLYGON_ZKEVM_L1:-"0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"}
+POLYGON_ZKEVM_BRIDGE_L1=${POLYGON_ZKEVM_BRIDGE_L1:-"0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"}
+POLYGON_ZKEVM_BRIDGE_L2=${POLYGON_ZKEVM_BRIDGE_L2:-"0x5FbDB2315678afecb367f032d93F642f64180aa3"}
+POLYGON_ROLLUP_MANAGER_L1=${POLYGON_ROLLUP_MANAGER_L1:-"0x0165878A594ca255338adfa4d48449f69242Eb8F"}
+POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L1=${POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L1:-"0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"}
+# L2 Global Exit Root Manager contract - different from the bridge contract
+# This should be the address of GlobalExitRootManagerL2SovereignChain contract, not the bridge
+POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2=${POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2:-"0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"}
 AGGKIT_EVM_SENDER=${AGGKIT_EVM_SENDER:-0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266}
+
+# Default private key for sandbox mode (from anvil default accounts)
+AGGORACLE_PRIVATE_KEY=${AGGORACLE_PRIVATE_KEY:-"0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}
 
 # Function to generate configuration file
 generate_config() {
     echo "Generating configuration file: $AGGKIT_CONFIG_PATH"
     
-    mkdir -p "$(dirname "$AGGKIT_CONFIG_PATH")"
+    # Create private key file for AggOracle (keystore format)
+    echo "Creating AggOracle keystore file..."
+    # Use the pre-generated keystore for anvil's first account (0xac0974...)
+    # This keystore has no password for simplicity in sandbox mode
+    cat > /tmp/aggoracle.key << 'KEYSTORE_EOF'
+{"address":"f39fd6e51aad88f6f4ce6ab8827279cfffb92266","crypto":{"cipher":"aes-128-ctr","ciphertext":"d005030a7684f3adad2447cbb27f63039eec2224c451eaa445de0d90502b9f3d","cipherparams":{"iv":"dc07a54bc7e388efa89c34d42f2ebdb4"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"cf2ec55ecae11171de575112cfb16963570533a9c46fb774473ceb11519eb24a"},"mac":"3eb180d405a5da6e462b2adc00091c14856c91d574bf27348714506357d6e177"},"id":"035454db-6b6d-477f-8a79-ce24c10b185f","version":3}
+KEYSTORE_EOF
+    chmod 600 /tmp/aggoracle.key
     
     cat > "$AGGKIT_CONFIG_PATH" << EOF
 # AggKit Sandbox Configuration - Generated from Environment Variables
@@ -67,14 +84,18 @@ MaxRequestsPerIPAndSecond = 1000
 
 [Common]
 NetworkID = $AGGKIT_NETWORK_ID
-IsValidiumMode = false
 
-[Etherman]
+[Common.L2RPC]
+URL = "$AGGKIT_L2_URL"
+Mode = "basic"
+
+[L1NetworkConfig]
 URL = "$AGGKIT_L1_URL"
-ForkID = 9
-MaxTxPerBatch = 300
-PolygonBridgeAddress = "$AGGKIT_POLYGON_BRIDGE_ADDRESS"
 L1ChainID = $AGGKIT_L1_CHAIN_ID
+POLTokenAddr = "0x0000000000000000000000000000000000000000"
+RollupAddr = "$POLYGON_ZKEVM_L1"
+RollupManagerAddr = "$POLYGON_ROLLUP_MANAGER_L1"
+GlobalExitRootManagerAddr = "$POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L1"
 
 [EthTxManager]
 FrequencyToMonitorTxs = "10s"
@@ -129,52 +150,107 @@ Name = "Docker L2 Node"
 # AggOracle Configuration
 [AggOracle]
 SandboxMode = true
-TargetChainID = $AGGKIT_L2_CHAIN_ID
-L1URL = "$AGGKIT_L1_URL"
-L2URL = "$AGGKIT_L2_URL"
-EVMSender = "$AGGKIT_EVM_SENDER"
-EVMPrivateKey = {Path = "", Password = ""}
-GasOffset = 0
+TargetChainType = "EVM"
+URLRPCL1 = "$AGGKIT_L1_URL"
+BlockFinality = "LatestBlock"
 WaitPeriodNextGER = "10s"
+
+[AggOracle.EVMSender]
+GlobalExitRootL2 = "$POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2"
+GasOffset = 0
 WaitPeriodMonitorTx = "10s"
-WaitPeriodFinalizedRootSignal = "10s"
+
+[AggOracle.EVMSender.EthTxManager]
+FrequencyToMonitorTxs = "10s"
+WaitTxToBeMined = "30s"
+GetReceiptMaxTime = "60s"
+GetReceiptWaitInterval = "5s"
+ForcedGas = 0
+GasPriceMarginFactor = 1
+MaxGasPriceLimit = 0
+StoragePath = "/app/data/ethtxmanager-aggoracle.sqlite"
+ReadPendingL1Txs = false
+SafeStatusL1NumberOfBlocks = 0
+FinalizedStatusL1NumberOfBlocks = 0
+
+[[AggOracle.EVMSender.EthTxManager.PrivateKeys]]
+Method = "local"
+Path = "/tmp/aggoracle.key"
+Password = "testonly"
+
+[AggOracle.EVMSender.EthTxManager.Etherman]
+URL = "$AGGKIT_L2_URL"
+MultiGasProvider = false
+L1ChainID = $AGGKIT_L2_CHAIN_ID
+HTTPHeaders = []
 
 # AggSender (will be skipped in sandbox mode)
 [AggSender]
 StoragePath = "/app/data/aggsender"
-AggLayerURL = "http://localhost:8080"
-BlockGetInterval = "10s"
-CheckSettledInterval = "10s"
-MaxWaitForL1InfoRootSignal = "30s"
+BlockFinality = "LatestBlock"
 PrivateKey = {Path = "", Password = ""}
 
-# Sync configurations
-[BridgeSync]
-ChainID = $AGGKIT_L1_CHAIN_ID
-RetryAfterErrorPeriod = "1s"
-MaxRetryAttemptsAfterError = -1
-WaitForNewBlocksPeriod = "100ms"
-InitialBlock = 0
-SyncChunkSize = 100
-SyncInterval = "10s"
+[AggSender.AgglayerClient]
+URL = "http://localhost:8080"
 
+# L1InfoTreeSync configuration  
 [L1InfoTreeSync]
-ChainID = $AGGKIT_L1_CHAIN_ID
-RetryAfterErrorPeriod = "1s"
-MaxRetryAttemptsAfterError = -1
+DBPath = "/app/data/L1InfoTreeSync.sqlite"
+GlobalExitRootAddr = "$POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L1"
+RollupManagerAddr = "$POLYGON_ROLLUP_MANAGER_L1"
+SyncBlockChunkSize = 100
+BlockFinality = "LatestBlock"
+URLRPCL1 = "$AGGKIT_L1_URL"
 WaitForNewBlocksPeriod = "100ms"
 InitialBlock = 0
-SyncChunkSize = 100
-SyncInterval = "10s"
+RetryAfterErrorPeriod = "1s"
+MaxRetryAttemptsAfterError = -1
+RequireStorageContentCompatibility = false
 
+# LastGERSync configuration
 [LastGERSync]
-ChainID = $AGGKIT_L1_CHAIN_ID
+DBPath = "/app/data/lastgersync.sqlite"
+BlockFinality = "LatestBlock"
+InitialBlockNum = 0
+GlobalExitRootL2Addr = "$POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2"
 RetryAfterErrorPeriod = "1s"
 MaxRetryAttemptsAfterError = -1
-WaitForNewBlocksPeriod = "100ms"
-InitialBlock = 0
-SyncChunkSize = 100
-SyncInterval = "10s"
+WaitForNewBlocksPeriod = "1s"
+DownloadBufferSize = 100
+RequireStorageContentCompatibility = false
+SyncMode = "FEP"
+
+# ReorgDetector configurations
+[ReorgDetectorL1]
+DBPath = "/app/data/reorgdetectorl1.sqlite"
+FinalizedBlock = "LatestBlock"
+
+[ReorgDetectorL2]
+DBPath = "/app/data/reorgdetectorl2.sqlite"
+FinalizedBlock = "LatestBlock"
+
+# Bridge sync configurations
+[BridgeL1Sync]
+DBPath = "/app/data/bridgel1sync.sqlite"
+BlockFinality = "LatestBlock"
+InitialBlockNum = 0
+BridgeAddr = "$POLYGON_ZKEVM_BRIDGE_L1"
+SyncBlockChunkSize = 100
+RetryAfterErrorPeriod = "1s"
+MaxRetryAttemptsAfterError = -1
+WaitForNewBlocksPeriod = "3s"
+RequireStorageContentCompatibility = false
+
+[BridgeL2Sync]
+DBPath = "/app/data/bridgel2sync.sqlite"
+BlockFinality = "LatestBlock"
+InitialBlockNum = 0
+BridgeAddr = "$POLYGON_ZKEVM_BRIDGE_L2"
+SyncBlockChunkSize = 100
+RetryAfterErrorPeriod = "1s"
+MaxRetryAttemptsAfterError = -1
+WaitForNewBlocksPeriod = "3s"
+RequireStorageContentCompatibility = false
 EOF
 
     echo "Configuration generated successfully!"
@@ -215,6 +291,11 @@ validate_config() {
         exit 1
     fi
     
+    if [[ "$POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2" == "0x0000000000000000000000000000000000000000" ]]; then
+        echo "Warning: POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2 is not set. AggOracle will fail to start."
+        echo "Please deploy a GlobalExitRootManagerL2SovereignChain contract and set this environment variable."
+    fi
+    
     echo "Configuration validation passed!"
 }
 
@@ -229,7 +310,12 @@ main() {
     echo "  AGGKIT_COMPONENTS: $AGGKIT_COMPONENTS"
     echo "  AGGKIT_REST_PORT: $AGGKIT_REST_PORT"
     echo "  AGGKIT_DATABASE_NAME: $AGGKIT_DATABASE_NAME"
+    echo "  POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2: $POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2"
     echo ""
+    
+    # Debug information
+    echo "Debug: Current user: $(whoami)"
+    echo "Debug: Config path: $AGGKIT_CONFIG_PATH"
     
     # Validate configuration
     validate_config
@@ -257,8 +343,8 @@ main() {
         wait_for_dependency "$L2_HOST" "$L2_PORT" "L2 Node"
     fi
     
-    # Create data directory
-    mkdir -p /app/data
+    # Create data directory if needed
+    mkdir -p /app/data /app/logs
     
     echo "Starting AggKit Sandbox..."
     echo "Configuration file: $AGGKIT_CONFIG_PATH"

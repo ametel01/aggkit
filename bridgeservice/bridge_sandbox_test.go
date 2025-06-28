@@ -13,6 +13,7 @@ import (
 	"github.com/agglayer/aggkit/bridgeservice/types"
 	"github.com/agglayer/aggkit/bridgesync"
 	"github.com/agglayer/aggkit/config"
+	configtypes "github.com/agglayer/aggkit/config/types"
 	"github.com/agglayer/aggkit/l1infotreesync"
 	tree "github.com/agglayer/aggkit/tree/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -64,7 +65,7 @@ func TestBridgeService_CreateSandboxMetadata(t *testing.T) {
 			AutoSettle:       true,
 			InstantClaims:    true,
 			MockFinalization: true,
-			SettlementDelay:  5 * time.Second,
+			SettlementDelay:  configtypes.NewDuration(5 * time.Second),
 			L1Node: config.SandboxNodeConfig{
 				ChainID: 31337,
 			},
@@ -97,7 +98,7 @@ func TestBridgeService_GetBridgesHandler_Sandbox(t *testing.T) {
 			AutoSettle:       true,
 			InstantClaims:    true,
 			MockFinalization: true,
-			SettlementDelay:  2 * time.Second,
+			SettlementDelay:  configtypes.NewDuration(2 * time.Second),
 			L1Node: config.SandboxNodeConfig{
 				ChainID: 31337,
 			},

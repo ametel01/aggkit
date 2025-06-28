@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agglayer/aggkit/config/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -59,7 +60,7 @@ func TestSandboxConfig_ValidateSandboxConfig(t *testing.T) {
 				Sandbox: SandboxConfig{
 					Enabled:          true,
 					AutoSettle:       true,
-					SettlementDelay:  5 * time.Second,
+					SettlementDelay:  types.NewDuration(5 * time.Second),
 					MockFinalization: true,
 					InstantClaims:    true,
 					L1Node: SandboxNodeConfig{
@@ -132,4 +133,4 @@ func TestSandboxConfig_ValidateSandboxConfig(t *testing.T) {
 			}
 		})
 	}
-} 
+}

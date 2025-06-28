@@ -1,22 +1,10 @@
-version: '3.8'
-
 services:
   # L1 Anvil Node (Ethereum Mainnet fork)
   anvil-l1:
-    image: ghcr.io/foundry-rs/foundry:latest
+    image: agg-sandbox-anvil-mainnet:latest
     container_name: aggkit-anvil-l1
     ports:
       - "8545:8545"
-    command: |
-      anvil 
-      --host 0.0.0.0 
-      --port 8545 
-      --chain-id 31337
-      --accounts 10
-      --balance 10000
-      --gas-limit 30000000
-      --code-size-limit 50000
-      --block-time 2
     networks:
       - aggkit-sandbox
     healthcheck:
@@ -28,20 +16,10 @@ services:
 
   # L2 Anvil Node (Sovereign chain)  
   anvil-l2:
-    image: ghcr.io/foundry-rs/foundry:latest
+    image: agg-sandbox-anvil-polygon:latest
     container_name: aggkit-anvil-l2
     ports:
       - "8546:8545"
-    command: |
-      anvil 
-      --host 0.0.0.0 
-      --port 8545 
-      --chain-id 31338
-      --accounts 10
-      --balance 10000
-      --gas-limit 30000000
-      --code-size-limit 50000
-      --block-time 3
     networks:
       - aggkit-sandbox
     healthcheck:
@@ -159,7 +137,4 @@ volumes:
 
 networks:
   aggkit-sandbox:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16 
+    driver: bridge 

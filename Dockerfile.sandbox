@@ -43,16 +43,18 @@ RUN addgroup -g 1001 -S aggkit && \
     adduser -u 1001 -S aggkit -G aggkit
 
 # Create necessary directories
-RUN mkdir -p /app/config /app/data /app/logs && \
-    chown -R aggkit:aggkit /app
+RUN mkdir -p /app/config /app/data /app/logs
 
 # Copy binary from builder
 COPY --from=builder /app/aggkit-sandbox /app/aggkit-sandbox
-RUN chmod +x /app/aggkit-sandbox
 
 # Copy entrypoint script
 COPY docker/entrypoint-sandbox.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+
+# Set ownership and permissions AFTER copying files
+RUN chown -R aggkit:aggkit /app && \
+    chmod 755 /app/config /app/data /app/logs && \
+    chmod +x /app/aggkit-sandbox /app/entrypoint.sh
 
 # Set working directory
 WORKDIR /app

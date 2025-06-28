@@ -348,7 +348,7 @@ func createAggoracle(
 		aggOracleSandboxConfig := aggoracle.SandboxConfig{
 			Enabled:          globalSandboxConfig.Enabled,
 			AutoSettle:       globalSandboxConfig.AutoSettle,
-			SettlementDelay:  globalSandboxConfig.SettlementDelay,
+			SettlementDelay:  globalSandboxConfig.SettlementDelay.Duration,
 			MockFinalization: globalSandboxConfig.MockFinalization,
 			InstantClaims:    globalSandboxConfig.InstantClaims,
 		}
