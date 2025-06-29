@@ -336,12 +336,11 @@ func TestTryDecodeClaimCalldata(t *testing.T) {
 	require.Contains(t, err.Error(), "input too short: 3 bytes")
 	require.False(t, found)
 
-	// Unknown method ID should return false, error
+	// Unknown method ID should return false, nil (not an error)
 	input := make([]byte, methodIDLength)
 	copy(input, []byte{0xaa, 0xbb, 0xcc, 0xdd})
 	found, err = c.tryDecodeClaimCalldata(fromAddr, input)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "unrecognized method ID: aabbccdd")
+	require.NoError(t, err)
 	require.False(t, found)
 
 	// Valid method ID (simulate claimAssetEtrogMethodID)
@@ -398,7 +397,7 @@ func TestSetClaimCalldata(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "root call reverted")
 
-	// Case 3: All internal calls reverted
+	// Case 3: All internal calls reverted - should return nil (no valid calldata found)
 	rootCall = &call{
 		To:  common.HexToAddress("0x01"),
 		Err: nil,
@@ -417,10 +416,9 @@ func TestSetClaimCalldata(t *testing.T) {
 
 	claim = &Claim{}
 	err = claim.setClaimCalldata(client, bridgeAddr, txHash, logger)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "not found")
+	require.NoError(t, err) // Should return nil, not an error
 
-	// Case 4: No matching call
+	// Case 4: No matching call - should return nil (no valid calldata found)
 	rootCall = &call{
 		To:    common.HexToAddress("0x01"),
 		Err:   nil,
@@ -434,8 +432,7 @@ func TestSetClaimCalldata(t *testing.T) {
 
 	claim = &Claim{}
 	err = claim.setClaimCalldata(client, bridgeAddr, txHash, logger)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "not found")
+	require.NoError(t, err) // Should return nil, not an error
 }
 
 func strPtr(s string) *string {

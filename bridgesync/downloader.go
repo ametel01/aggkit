@@ -404,7 +404,7 @@ func extractCall(client aggkittypes.RPCClienter, contractAddr common.Address, tx
 // - txHash: Transaction hash to trace.
 // - logger: Logger instance for debug logging.
 //
-// Returns an error if tracing fails or calldata isn't found.
+// Returns an error if tracing fails. Returns nil if no valid claim calldata is found (this is normal).
 func (c *Claim) setClaimCalldata(
 	client aggkittypes.RPCClienter,
 	bridge common.Address,
@@ -430,6 +430,11 @@ func (c *Claim) setClaimCalldata(
 			}
 			return c.tryDecodeClaimCalldata(call.From, call.Input)
 		}, logger)
+
+	// If no valid claim calldata is found, this is normal - don't treat it as an error
+	if err == db.ErrNotFound {
+		return nil
+	}
 
 	return err
 }
@@ -504,6 +509,8 @@ func (c *Claim) tryDecodeClaimCalldata(senderAddr common.Address, input []byte) 
 		return found, nil
 
 	default:
-		return false, fmt.Errorf("unrecognized method ID: %x", methodID)
+		// Return false instead of an error for unrecognized method IDs
+		// This allows the claim processing to continue without failing
+		return false, nil
 	}
 }
