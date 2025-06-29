@@ -9,6 +9,7 @@ Successfully implemented a complete Docker-based sandbox environment for AggKit 
 ### 🎯 Key Features Delivered
 
 #### 1. **Sandbox-Only Docker Image**
+
 - ✅ Dedicated `Dockerfile.sandbox` for sandbox mode only
 - ✅ Validates sandbox mode is enabled at startup
 - ✅ Automatic configuration generation from environment variables
@@ -16,6 +17,7 @@ Successfully implemented a complete Docker-based sandbox environment for AggKit 
 - ✅ Non-root user execution for security
 
 #### 2. **Configuration Through Environment Variables**
+
 - ✅ All configuration externalized through environment variables
 - ✅ No baked-in configuration inside the image
 - ✅ Support for custom configuration file mounting
@@ -23,6 +25,7 @@ Successfully implemented a complete Docker-based sandbox environment for AggKit 
 - ✅ Configuration validation at startup
 
 #### 3. **Docker Compose Integration**
+
 - ✅ Complete docker-compose setup with Anvil nodes
 - ✅ Simple docker-compose for quick development
 - ✅ Service dependency management and health checks
@@ -30,6 +33,7 @@ Successfully implemented a complete Docker-based sandbox environment for AggKit 
 - ✅ Network isolation and proper service discovery
 
 #### 4. **Production-Ready Features**
+
 - ✅ Comprehensive health checks
 - ✅ Dependency waiting mechanisms
 - ✅ Graceful error handling and validation
@@ -60,6 +64,7 @@ Successfully implemented a complete Docker-based sandbox environment for AggKit 
 ### 📁 Files Created
 
 #### Core Docker Files
+
 - `Dockerfile.sandbox` - Sandbox-specific Docker image
 - `docker/entrypoint-sandbox.sh` - Dynamic configuration entrypoint
 - `.dockerignore` - Optimized build context
@@ -67,6 +72,7 @@ Successfully implemented a complete Docker-based sandbox environment for AggKit 
 - `docker-compose.simple.yml` - Minimal setup
 
 #### Configuration and Documentation
+
 - `docker/env.sandbox.template` - Environment variables template
 - `docker/README.md` - Comprehensive usage documentation
 - `docs/docker_sandbox_complete.md` - This completion document
@@ -75,6 +81,7 @@ Successfully implemented a complete Docker-based sandbox environment for AggKit 
 ### 🚀 Usage Examples
 
 #### Quick Start
+
 ```bash
 # Clone the repository
 git clone <repository>
@@ -88,6 +95,7 @@ docker-compose -f docker-compose.simple.yml up --build
 ```
 
 #### Custom Configuration
+
 ```bash
 # Copy environment template
 cp docker/env.sandbox.template .env
@@ -100,6 +108,7 @@ docker-compose --env-file .env -f docker-compose.sandbox.yml up
 ```
 
 #### API Testing
+
 ```bash
 # Health check
 curl http://localhost:5577/
@@ -114,6 +123,7 @@ curl "http://localhost:5577/bridge/v1/sync-status"
 ### 🎛️ Configuration Options
 
 #### Environment Variables (Key)
+
 - `AGGKIT_SANDBOX_ENABLED=true` - Enable sandbox mode (required)
 - `AGGKIT_L1_URL` - L1 node endpoint
 - `AGGKIT_L2_URL` - L2 node endpoint  
@@ -122,6 +132,7 @@ curl "http://localhost:5577/bridge/v1/sync-status"
 - `AGGKIT_REST_PORT` - API service port
 
 #### Sandbox Behavior
+
 - `AGGKIT_SANDBOX_AUTO_SETTLE=true` - Automatic settlement
 - `AGGKIT_SANDBOX_INSTANT_CLAIMS=true` - Instant claim processing
 - `AGGKIT_SANDBOX_MOCK_FINALIZATION=true` - Skip complex finality
@@ -130,13 +141,15 @@ curl "http://localhost:5577/bridge/v1/sync-status"
 ### 🔧 Technical Implementation
 
 #### Docker Image Features
+
 - **Base Images**: Go 1.24 Alpine (build), Alpine 3.18 (runtime)
 - **Security**: Non-root user (uid 1001), minimal attack surface
 - **Size Optimization**: Multi-stage build, .dockerignore exclusions
 - **Dependencies**: SQLite, curl, jq, bash for tooling
 
 #### Build Process
-1. **Build Stage**: 
+
+1. **Build Stage**:
    - Install Go dependencies
    - Remove test files to avoid missing test dependencies
    - Run `go mod tidy && go mod download`
@@ -149,6 +162,7 @@ curl "http://localhost:5577/bridge/v1/sync-status"
    - Set up health checks and default environment
 
 #### Configuration Generation
+
 - Dynamic TOML generation from environment variables
 - Validation of required parameters
 - Support for custom configuration file mounting
@@ -158,12 +172,14 @@ curl "http://localhost:5577/bridge/v1/sync-status"
 ### 📊 Testing and Validation
 
 #### Build Tests
+
 - ✅ Docker image builds successfully
 - ✅ Binary executes and shows help
 - ✅ Configuration generation works
 - ✅ Environment variable parsing correct
 
 #### Integration Tests
+
 - ✅ Docker-compose starts all services
 - ✅ Health checks pass
 - ✅ Service discovery works
@@ -171,6 +187,7 @@ curl "http://localhost:5577/bridge/v1/sync-status"
 - ✅ Sandbox metadata included in responses
 
 #### Performance
+
 - ✅ Image size optimized (~100MB runtime)
 - ✅ Fast startup times (<30 seconds)
 - ✅ Efficient resource usage
@@ -179,6 +196,7 @@ curl "http://localhost:5577/bridge/v1/sync-status"
 ### 🛡️ Security Considerations
 
 #### Development-Only Warning
+
 ⚠️ **This image is designed exclusively for development**
 
 - Uses default Anvil accounts with known private keys
@@ -187,6 +205,7 @@ curl "http://localhost:5577/bridge/v1/sync-status"
 - Database and logs stored in containers
 
 #### Security Features
+
 - Non-root user execution
 - Minimal base image (Alpine)
 - No secrets baked into image
@@ -195,6 +214,7 @@ curl "http://localhost:5577/bridge/v1/sync-status"
 ### 🔄 DevOps Integration
 
 #### CI/CD Ready
+
 ```yaml
 # Example GitHub Actions
 - name: Build Sandbox Image
@@ -205,6 +225,7 @@ curl "http://localhost:5577/bridge/v1/sync-status"
 ```
 
 #### Multi-Environment Support
+
 - Development: Full debug logging, instant settlement
 - Testing: Production-like behavior, controlled timing
 - Staging: External node connections, realistic data
@@ -212,12 +233,14 @@ curl "http://localhost:5577/bridge/v1/sync-status"
 ### 📈 Monitoring and Observability
 
 #### Metrics and Monitoring
+
 - Prometheus metrics endpoint: `:8080/metrics`
 - Health check endpoints for all services
 - Comprehensive logging with structured output
 - Container resource monitoring
 
 #### Debugging Capabilities
+
 - Interactive shell access: `docker exec -it aggkit-sandbox bash`
 - Configuration inspection: View generated TOML files
 - Live log streaming: `docker-compose logs -f`
@@ -250,4 +273,4 @@ The Docker sandbox environment successfully enables **local development of bridg
 3. **Monitoring Stack**: Add Grafana dashboards
 4. **Load Testing**: Performance testing under load
 5. **Security Scanning**: Container vulnerability scanning
-6. **Documentation**: Video tutorials and workshops 
+6. **Documentation**: Video tutorials and workshops

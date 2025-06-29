@@ -714,7 +714,7 @@ func TestGetClaimsHandler(t *testing.T) {
 			Return(nil, 0, errors.New(fooErrMsg))
 
 		query := url.Values{}
-		query.Set(networkIDParam, "0")
+		query.Set(networkIDParam, "1")
 		query.Set(pageNumberParam, "1")
 		query.Set(pageSizeParam, "10")
 
@@ -778,7 +778,7 @@ func TestGetTokenMappingsHandler(t *testing.T) {
 			Return(tokenMappings, len(tokenMappings), nil)
 
 		query := url.Values{}
-		query.Set(networkIDParam, "0")
+		query.Set(networkIDParam, "1")
 		query.Set(pageNumberParam, "1")
 		query.Set(pageSizeParam, "10")
 
@@ -851,7 +851,7 @@ func TestGetTokenMappingsHandler(t *testing.T) {
 			Return(nil, 0, errors.New(fooErrMsg))
 
 		query := url.Values{}
-		query.Set(networkIDParam, "0")
+		query.Set(networkIDParam, "1")
 
 		w := performRequest(t, bridgeMocks.bridge.router, http.MethodGet, fmt.Sprintf("%s/token-mappings?%s", BridgeV1Prefix, query.Encode()), nil)
 		require.Equal(t, http.StatusInternalServerError, w.Code)
@@ -912,7 +912,7 @@ func TestGetLegacyTokenMigrationsHandler(t *testing.T) {
 			Return(tokenMigrations, len(tokenMigrations), nil)
 
 		queryParams := url.Values{}
-		queryParams.Set("network_id", "0")
+		queryParams.Set("network_id", "1")
 		queryParams.Set("page_number", "1")
 		queryParams.Set("page_size", "10")
 
@@ -989,7 +989,7 @@ func TestGetLegacyTokenMigrationsHandler(t *testing.T) {
 			Return(nil, 0, fmt.Errorf(fooErrMsg))
 
 		queryParams := url.Values{}
-		queryParams.Set("network_id", "0")
+		queryParams.Set("network_id", "1")
 
 		w := performRequest(t, bridgeMocks.bridge.router, http.MethodGet, fmt.Sprintf("%s/legacy-token-migrations?%s", BridgeV1Prefix, queryParams.Encode()), nil)
 
@@ -1060,7 +1060,7 @@ func TestL1InfoTreeIndexForBridgeHandler(t *testing.T) {
 			}, nil)
 
 		queryParams := url.Values{}
-		queryParams.Set("network_id", "0")
+		queryParams.Set("network_id", "1")
 		queryParams.Set("deposit_count", fmt.Sprintf("%d", depositCount))
 
 		w := performRequest(t, bridgeMocks.bridge.router, http.MethodGet, fmt.Sprintf("%s/l1-info-tree-index?%s", BridgeV1Prefix, queryParams.Encode()), nil)
@@ -1139,7 +1139,7 @@ func TestL1InfoTreeIndexForBridgeHandler(t *testing.T) {
 			Return(nil, fmt.Errorf(fooErrMsg))
 
 		queryParams := url.Values{}
-		queryParams.Set("network_id", "0")
+		queryParams.Set("network_id", "1")
 		queryParams.Set("deposit_count", fmt.Sprintf("%d", depositCount))
 
 		w := performRequest(t, bridgeMocks.bridge.router, http.MethodGet, fmt.Sprintf("%s/l1-info-tree-index?%s", BridgeV1Prefix, queryParams.Encode()), nil)
@@ -1165,7 +1165,7 @@ func TestL1InfoTreeIndexForBridgeHandler(t *testing.T) {
 			Return(nil, fmt.Errorf(barErrMsg))
 
 		queryParams := url.Values{}
-		queryParams.Set("network_id", "0")
+		queryParams.Set("network_id", "1")
 		queryParams.Set("deposit_count", fmt.Sprintf("%d", depositCount))
 
 		w := performRequest(t, bridgeMocks.bridge.router, http.MethodGet, fmt.Sprintf("%s/l1-info-tree-index?%s", BridgeV1Prefix, queryParams.Encode()), nil)
@@ -1220,7 +1220,7 @@ func TestInjectedL1InfoLeafHandler(t *testing.T) {
 			Return(l1InfoTreeLeaf, nil)
 
 		queryParams := url.Values{}
-		queryParams.Set(networkIDParam, "0")
+		queryParams.Set(networkIDParam, "1")
 		queryParams.Set(leafIndexParam, fmt.Sprintf("%d", l1InfoTreeLeaf.L1InfoTreeIndex))
 
 		response := performRequest(t, bridgeMocks.bridge.router, http.MethodGet, fmt.Sprintf("%s/injected-l1-info-leaf?%s", BridgeV1Prefix, queryParams.Encode()), nil)

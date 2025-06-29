@@ -14,7 +14,6 @@ AGGKIT_LOG_LEVEL=${AGGKIT_LOG_LEVEL:-info}
 AGGKIT_COMPONENTS=${AGGKIT_COMPONENTS:-"bridge,aggoracle"}
 
   # Network configuration
-  AGGKIT_NETWORK_ID=${AGGKIT_NETWORK_ID:-1338}
   AGGKIT_L1_CHAIN_ID=${CHAIN_ID_MAINNET:-"1"}
   AGGKIT_L2_CHAIN_ID=${CHAIN_ID_AGGLAYER_1:-"1101"}
   AGGKIT_L1_URL=${AGGKIT_L1_URL:-"http://anvil-l1:8545"}
@@ -82,8 +81,13 @@ ReadTimeout = "15s"
 WriteTimeout = "15s"
 MaxRequestsPerIPAndSecond = 1000
 
+# Primary Network Configuration (L2)
 [Common]
-NetworkID = $AGGKIT_NETWORK_ID
+NetworkID = $AGGKIT_L2_CHAIN_ID
+
+[Common.L1RPC]
+URL = "$AGGKIT_L1_URL"
+Mode = "basic"
 
 [Common.L2RPC]
 URL = "$AGGKIT_L2_URL"
@@ -128,6 +132,23 @@ Port = ""
 User = ""
 Password = ""
 MaxConns = 0
+
+# Network Configurations for Bridge Service
+[Networks]
+
+# L1 Network Configuration (Mainnet)
+[Networks.L1]
+NetworkID = $AGGKIT_L1_CHAIN_ID
+Name = "L1 Mainnet"
+URL = "$AGGKIT_L1_URL"
+ChainID = $AGGKIT_L1_CHAIN_ID
+
+# L2 Network Configuration
+[Networks.L2] 
+NetworkID = $AGGKIT_L2_CHAIN_ID
+Name = "L2 AggLayer"
+URL = "$AGGKIT_L2_URL"
+ChainID = $AGGKIT_L2_CHAIN_ID
 
 # Sandbox Configuration
 [Sandbox]
@@ -251,6 +272,22 @@ RetryAfterErrorPeriod = "1s"
 MaxRetryAttemptsAfterError = -1
 WaitForNewBlocksPeriod = "3s"
 RequireStorageContentCompatibility = false
+
+# Bridge Service Network Support
+[BridgeService]
+SupportedNetworks = [1, 1101]
+
+[BridgeService.Networks.1]
+Name = "L1 Mainnet"
+ChainID = $AGGKIT_L1_CHAIN_ID
+BridgeAddr = "$POLYGON_ZKEVM_BRIDGE_L1"
+URL = "$AGGKIT_L1_URL"
+
+[BridgeService.Networks.1101]
+Name = "L2 AggLayer"
+ChainID = $AGGKIT_L2_CHAIN_ID
+BridgeAddr = "$POLYGON_ZKEVM_BRIDGE_L2"
+URL = "$AGGKIT_L2_URL"
 EOF
 
     echo "Configuration generated successfully!"
@@ -310,6 +347,8 @@ main() {
     echo "  AGGKIT_COMPONENTS: $AGGKIT_COMPONENTS"
     echo "  AGGKIT_REST_PORT: $AGGKIT_REST_PORT"
     echo "  AGGKIT_DATABASE_NAME: $AGGKIT_DATABASE_NAME"
+    echo "  POLYGON_ZKEVM_BRIDGE_L1: $POLYGON_ZKEVM_BRIDGE_L1"
+    echo "  POLYGON_ZKEVM_BRIDGE_L2: $POLYGON_ZKEVM_BRIDGE_L2"
     echo "  POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2: $POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2"
     echo ""
     

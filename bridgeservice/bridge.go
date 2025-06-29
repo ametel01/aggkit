@@ -52,7 +52,7 @@ const (
 	globalIndexParam  = "global_index"
 
 	binarySearchDivider = 2
-	mainnetNetworkID    = 0
+	mainnetNetworkID    = 1
 
 	errNetworkID         = "unsupported network id: %v"
 	errSetupRequest      = "failed to setup request: %v"
