@@ -372,6 +372,18 @@ func (p *processor) ProcessBlock(ctx context.Context, block sync.Block) error {
 			}
 			info.GlobalExitRoot = info.GetGlobalExitRoot()
 			info.Hash = info.GetHash()
+
+			// Skip insertion if this Global Exit Root is already present in the DB (can happen when
+			// more than one leaf in the same block produces the same GER – e.g. empty rollup exit root).
+			exists := 0
+			if err := tx.QueryRow(`SELECT COUNT(1) FROM l1info_leaf WHERE global_exit_root = $1;`, info.GlobalExitRoot.String()).Scan(&exists); err != nil {
+				return fmt.Errorf("check duplicate GER: %w", err)
+			}
+			if exists > 0 {
+				p.log.Debugf("duplicate GER %s detected on block %d – skipping L1InfoTree leaf insertion", info.GlobalExitRoot, block.Num)
+				continue // do not add leaf, do not update index counter
+			}
+
 			if err = meddler.Insert(tx, "l1info_leaf", info); err != nil {
 				return fmt.Errorf("insert l1info_leaf %s. err: %w", info.String(), err)
 			}

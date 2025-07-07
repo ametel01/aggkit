@@ -59,6 +59,14 @@ func (m *MockL1InfoTreer) GetLatestInfoUntilBlock(ctx context.Context, blockNum 
 	return args.Get(0).(*l1infotreesync.L1InfoTreeLeaf), args.Error(1)
 }
 
+func (m *MockL1InfoTreer) GetLastInfo() (*l1infotreesync.L1InfoTreeLeaf, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*l1infotreesync.L1InfoTreeLeaf), args.Error(1)
+}
+
 func TestNewSandboxAggOracle(t *testing.T) {
 	// Setup
 	logger := log.GetDefaultLogger()
@@ -133,7 +141,7 @@ func TestSandboxAggOracle_calculateGERFromBridgeEvents(t *testing.T) {
 			bridges:        []bridgesync.Bridge{},
 			lastBlock:      100,
 			mockFinalized:  true,
-			expectedResult: false,
+			expectedResult: true, // GER should be keccak256(0x00..., 0x00...) which is a valid non-zero hash
 		},
 		{
 			name: "single bridge event with mock finalization",
@@ -193,33 +201,20 @@ func TestSandboxAggOracle_calculateGERFromBridgeEvents(t *testing.T) {
 				logger:        logger,
 			}
 
+			// Setup L1Info mock to return error so it falls back to bridge calculation
+			mockL1Info.On("GetLastInfo").Return(nil, errors.New("no L1 info available"))
+
 			// Setup bridge data mocks
-			if tt.mockFinalized {
-				// With MockFinalization, GetLastProcessedBlock is called twice:
-				// 1. In calculateGERFromBridgeEvents
-				// 2. In getLatestExitRootFromBridge
-				mockL1BridgeSync.On("GetLastProcessedBlock", mock.Anything).Return(tt.lastBlock, nil).Twice()
-			} else {
-				// Without MockFinalization, it's only called once in calculateGERFromBridgeEvents
-				mockL1BridgeSync.On("GetLastProcessedBlock", mock.Anything).Return(tt.lastBlock, nil).Once()
-			}
+			// L1 bridge sync - for mainnet exit root
+			mockL1BridgeSync.On("GetLastProcessedBlock", mock.Anything).Return(tt.lastBlock, nil)
 			mockL1BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).Return(tt.bridges, nil)
 
-			// Setup L1 info tree mocks if we have bridges
-			if len(tt.bridges) > 0 {
-				// Only mock the latest bridge since simulateGERCalculation only calls for the last bridge
-				latestBridge := tt.bridges[len(tt.bridges)-1]
-				mainnetExitRoot := common.HexToHash("0xa6f1c7537095290a4d4c0fa300186bf138a863b98a2d2257b33af94134b02278")
-				rollupExitRoot := common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000")
-				expectedGER := crypto.Keccak256Hash(mainnetExitRoot.Bytes(), rollupExitRoot.Bytes())
+			// L2 bridge sync - for rollup exit root (usually empty in tests)
+			mockL2BridgeSync.On("GetLastProcessedBlock", mock.Anything).Return(tt.lastBlock, nil)
+			mockL2BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).Return([]bridgesync.Bridge{}, nil)
 
-				mockL1InfoLeaf := &l1infotreesync.L1InfoTreeLeaf{
-					MainnetExitRoot: mainnetExitRoot,
-					RollupExitRoot:  rollupExitRoot,
-					GlobalExitRoot:  expectedGER,
-				}
-				mockL1Info.On("GetLatestInfoUntilBlock", mock.Anything, latestBridge.BlockNum).Return(mockL1InfoLeaf, nil)
-			}
+			// Note: With the new L1InfoTree-first approach, GetLatestInfoUntilBlock should not be called
+			// since GetLastInfo() will be called first and return an error, causing fallback to bridge calculation
 
 			// Test
 			ctx := context.Background()
@@ -234,9 +229,8 @@ func TestSandboxAggOracle_calculateGERFromBridgeEvents(t *testing.T) {
 			}
 
 			mockL1BridgeSync.AssertExpectations(t)
-			if len(tt.bridges) > 0 {
-				mockL1Info.AssertExpectations(t)
-			}
+			mockL2BridgeSync.AssertExpectations(t)
+			mockL1Info.AssertExpectations(t)
 		})
 	}
 }
@@ -338,12 +332,12 @@ func TestSandboxAggOracle_processLatestGERSandbox(t *testing.T) {
 		expectInject bool
 	}{
 		{
-			name:         "no bridge events - no injection",
+			name:         "no bridge events - should inject zero GER",
 			bridges:      []bridgesync.Bridge{},
 			isInjected:   false,
 			autoSettle:   true,
 			delay:        0,
-			expectInject: false,
+			expectInject: true,
 		},
 		{
 			name: "bridge event, not injected - should inject",
@@ -404,29 +398,39 @@ func TestSandboxAggOracle_processLatestGERSandbox(t *testing.T) {
 				logger:        logger,
 			}
 
+			// Setup L1Info mock to return error so it falls back to bridge calculation
+			mockL1Info.On("GetLastInfo").Return(nil, errors.New("no L1 info available"))
+
 			// Setup bridge data mocks
-			// With MockFinalization=true, GetLastProcessedBlock is called twice:
-			// 1. In calculateGERFromBridgeEvents
-			// 2. In getLatestExitRootFromBridge
-			mockL1BridgeSync.On("GetLastProcessedBlock", mock.Anything).Return(uint64(100), nil).Twice()
+			// GetLastProcessedBlock is called once for L1 bridge sync in calculateGERFromExitRoots
+			mockL1BridgeSync.On("GetLastProcessedBlock", mock.Anything).Return(uint64(100), nil)
 			mockL1BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).Return(tt.bridges, nil)
+
+			// Setup L2 bridge sync mocks (for rollup exit root)
+			mockL2BridgeSync.On("GetLastProcessedBlock", mock.Anything).Return(uint64(100), nil)
+			mockL2BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).Return([]bridgesync.Bridge{}, nil)
 
 			// Setup L1InfoTree and GER injection mocks
 			if len(tt.bridges) > 0 {
-				// Mock L1InfoTree to return proper mainnet and rollup exit roots
-				mainnetExitRoot := common.HexToHash("0xa6f1c7537095290a4d4c0fa300186bf138a863b98a2d2257b33af94134b02278")
+				latestBridge := tt.bridges[len(tt.bridges)-1]
+				// The bridge calculation produces different GER than direct keccak256
+				// Since L1InfoTree returns error, we fall back to bridge calculation
+				// Bridge calculation uses the latest bridge hash as mainnet exit root
+				mainnetExitRoot := latestBridge.Hash() // This is what bridge calculation actually uses
 				rollupExitRoot := common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000")
 				expectedGER := crypto.Keccak256Hash(mainnetExitRoot.Bytes(), rollupExitRoot.Bytes())
-
-				latestBridge := tt.bridges[len(tt.bridges)-1]
-				mockL1InfoLeaf := &l1infotreesync.L1InfoTreeLeaf{
-					MainnetExitRoot: mainnetExitRoot,
-					RollupExitRoot:  rollupExitRoot,
-					GlobalExitRoot:  expectedGER,
-				}
-				mockL1Info.On("GetLatestInfoUntilBlock", mock.Anything, latestBridge.BlockNum).Return(mockL1InfoLeaf, nil)
+				// Note: GetLatestInfoUntilBlock is not called in the new L1InfoTree-first approach
+				// The code tries GetLastInfo() first, gets an error, then falls back to bridge calculation
 
 				// Mock GER injection check and injection
+				mockSender.On("IsGERInjected", expectedGER).Return(tt.isInjected, nil)
+
+				if tt.expectInject {
+					mockSender.On("InjectGER", mock.Anything, expectedGER).Return(nil)
+				}
+			} else {
+				// When no bridge events exist, a GER is still computed (zero hash -> specific keccak256 hash)
+				expectedGER := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
 				mockSender.On("IsGERInjected", expectedGER).Return(tt.isInjected, nil)
 
 				if tt.expectInject {

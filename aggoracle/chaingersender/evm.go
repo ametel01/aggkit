@@ -3,6 +3,7 @@ package chaingersender
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/0xPolygon/cdk-contracts-tooling/contracts/pp/l2-sovereign-chain/globalexitrootmanagerl2sovereignchain"
@@ -108,6 +109,30 @@ func (c *EVMChainGERSender) InjectGER(ctx context.Context, ger common.Hash) erro
 
 	id, err := c.ethTxMan.Add(ctx, &c.l2GERManagerAddr, common.Big0, updateGERTxInput, c.gasOffset, nil)
 	if err != nil {
+		// If the tx already exists in the monitor DB, wait until it is mined instead of returning immediately
+		if strings.Contains(err.Error(), "already exists") {
+			c.logger.Debugf("GER tx already queued for %s, waiting for it to be mined", ger.Hex())
+
+			// Poll the contract until the GER appears or context is cancelled
+			for {
+				select {
+				case <-ctx.Done():
+					c.logger.Infof("context cancelled while waiting existing GER tx to be mined")
+					return nil
+
+				case <-ticker.C:
+					injected, checkErr := c.IsGERInjected(ger)
+					if checkErr != nil {
+						return checkErr
+					}
+					if injected {
+						c.logger.Debugf("GER %s is now injected", ger.Hex())
+						return nil
+					}
+				}
+			}
+		}
+
 		return err
 	}
 

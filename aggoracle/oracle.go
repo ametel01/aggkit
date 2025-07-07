@@ -16,6 +16,7 @@ import (
 
 type L1InfoTreer interface {
 	GetLatestInfoUntilBlock(ctx context.Context, blockNum uint64) (*l1infotreesync.L1InfoTreeLeaf, error)
+	GetLastInfo() (*l1infotreesync.L1InfoTreeLeaf, error)
 }
 
 type ChainSender interface {

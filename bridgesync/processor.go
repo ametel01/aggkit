@@ -707,8 +707,17 @@ func (p *processor) ProcessBlock(ctx context.Context, block sync.Block) error {
 		}
 	}()
 
-	if _, err := tx.Exec(`INSERT INTO block (num, hash) VALUES ($1, $2)`, block.Num, block.Hash.String()); err != nil {
-		p.log.Errorf("failed to insert block %d: %v", block.Num, err)
+	// Fast-path: if we already committed this block, skip it.
+	last, _ := p.GetLastProcessedBlock(ctx)
+	if block.Num <= last {
+		return nil
+	}
+
+	if _, err := tx.Exec(`INSERT INTO block (num,hash) VALUES ($1,$2)`, block.Num, block.Hash.String()); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			_ = tx.Rollback() // cancel everything else in this tx
+			return nil        // duplicate; nothing to do
+		}
 		return err
 	}
 

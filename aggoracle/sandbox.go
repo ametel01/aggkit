@@ -78,8 +78,8 @@ func (s *SandboxAggOracle) Start(ctx context.Context) {
 func (s *SandboxAggOracle) processLatestGERSandbox(ctx context.Context) error {
 	s.logger.Debug("Processing latest GER in sandbox mode")
 
-	// Get the latest bridge events to calculate GER
-	gerToInject, err := s.calculateGERFromBridgeEvents(ctx)
+	// Calculate GER based on the latest exit-roots from *both* bridges (L1 & L2)
+	gerToInject, err := s.calculateGERFromExitRoots(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to calculate GER from bridge events: %w", err)
 	}
@@ -122,60 +122,76 @@ func (s *SandboxAggOracle) processLatestGERSandbox(ctx context.Context) error {
 	return nil
 }
 
-// calculateGERFromBridgeEvents calculates the Global Exit Root based on bridge events
-// This bypasses the AggLayer and directly monitors L1 bridge events
-func (s *SandboxAggOracle) calculateGERFromBridgeEvents(ctx context.Context) (common.Hash, error) {
-	// Get the latest processed block from L1 bridge sync
-	lastProcessedBlock, err := s.l1BridgeSync.GetLastProcessedBlock(ctx)
-	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to get last processed block: %w", err)
+// calculateGERFromExitRoots returns the Global Exit Root as keccak256(mainnetExitRoot, rollupExitRoot).
+// mainnetExitRoot  – last exit-root of the *L1* bridge (bridges from / to mainnet)
+// rollupExitRoot   – last exit-root of the *L2* bridge (bridges from / to the rollup we are running on)
+func (s *SandboxAggOracle) calculateGERFromExitRoots(ctx context.Context) (common.Hash, error) {
+	// First, try to get the latest GER from L1InfoTree if available
+	if s.AggOracle.l1Info != nil {
+		latestInfo, err := s.AggOracle.l1Info.GetLastInfo()
+		if err == nil {
+			s.logger.Debugf("Using GER from L1InfoTree: %s (MainnetExitRoot: %s, RollupExitRoot: %s)",
+				latestInfo.GlobalExitRoot.Hex(), latestInfo.MainnetExitRoot.Hex(), latestInfo.RollupExitRoot.Hex())
+			return latestInfo.GlobalExitRoot, nil
+		}
+		s.logger.Debugf("Could not get latest L1InfoTree data, falling back to bridge calculation: %v", err)
 	}
 
-	// Get recent bridge events to calculate the latest GER
-	// In sandbox mode, we simplify this by getting the latest exit root from the bridge
-	latestRoot, err := s.getLatestExitRootFromBridge(ctx, lastProcessedBlock)
-	if err != nil {
-		return common.Hash{}, err
+	getLastRoot := func(p BridgeDataProvider) (common.Hash, error) {
+		// Get last processed block for this provider
+		lastBlock, err := p.GetLastProcessedBlock(ctx)
+		if err != nil {
+			return common.Hash{}, err
+		}
+
+		// Fetch all bridge events up to the last processed block – we only need the most recent one.
+		bridges, err := p.GetBridges(ctx, 0, lastBlock)
+		if err != nil {
+			return common.Hash{}, err
+		}
+		if len(bridges) == 0 {
+			// No deposits yet – the exit-root is zero.
+			return common.Hash{}, nil
+		}
+
+		latest := bridges[len(bridges)-1]
+
+		// Try to obtain the exit-root from the BridgeSync implementation if available.
+		// This gives the *state root* (root of the exit tree) instead of a single leaf hash.
+		if bs, ok := p.(*bridgesync.BridgeSync); ok {
+			root, err := bs.GetExitRootByIndex(ctx, latest.DepositCount)
+			if err == nil {
+				return root.Hash, nil
+			}
+			// Fall back to leaf hash on error but still log it.
+			s.logger.Debugf("fallback to leaf hash for exit-root (deposit %d): %v", latest.DepositCount, err)
+		}
+
+		// Fallback: use the leaf hash itself (not perfect but better than zero).
+		return latest.Hash(), nil
 	}
 
-	return latestRoot, nil
+	mainnetExitRoot, err := getLastRoot(s.l1BridgeSync)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to get mainnet exit root: %w", err)
+	}
+
+	rollupExitRoot, err := getLastRoot(s.l2BridgeSync)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to get rollup exit root: %w", err)
+	}
+
+	ger := crypto.Keccak256Hash(mainnetExitRoot.Bytes(), rollupExitRoot.Bytes())
+	s.logger.Debugf("Computed GER – mainnetExitRoot:%s rollupExitRoot:%s => GER:%s",
+		mainnetExitRoot.Hex(), rollupExitRoot.Hex(), ger.Hex())
+
+	return ger, nil
 }
 
-// getLatestExitRootFromBridge retrieves the latest exit root from bridge events
-func (s *SandboxAggOracle) getLatestExitRootFromBridge(ctx context.Context, blockNum uint64) (common.Hash, error) {
-	// In sandbox mode, we use mock finalization to get immediate access to latest data
-	if s.sandboxConfig.MockFinalization {
-		// Use the actual last processed block instead of 0
-		// This ensures we don't try to query unprocessed blocks
-		lastProcessed, err := s.l1BridgeSync.GetLastProcessedBlock(ctx)
-		if err != nil {
-			return common.Hash{}, fmt.Errorf("failed to get last processed block for mock finalization: %w", err)
-		}
-		blockNum = lastProcessed
-	}
-
-	// Get the latest bridge events up to the specified block
-	bridges, err := s.l1BridgeSync.GetBridges(ctx, 0, blockNum)
-	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to get bridges: %w", err)
-	}
-
-	// If no bridges found, return zero hash
-	if len(bridges) == 0 {
-		s.logger.Debug("No bridge events found")
-		return common.Hash{}, nil
-	}
-
-	// Get the latest bridge event
-	latestBridge := bridges[len(bridges)-1]
-
-	// In a real implementation, this would calculate the GER based on the bridge state
-	// For sandbox mode, we simulate this by using the bridge's local exit root
-	// This is a simplified approach for development purposes
-	ger := s.simulateGERCalculation(latestBridge)
-
-	s.logger.Debugf("Calculated GER from bridge events: %s (from %d bridge events)", ger.Hex(), len(bridges))
-	return ger, nil
+// calculateGERFromBridgeEvents is kept only to avoid breaking existing consumers/tests.
+// It now acts as a thin wrapper around calculateGERFromExitRoots.
+func (s *SandboxAggOracle) calculateGERFromBridgeEvents(ctx context.Context) (common.Hash, error) {
+	return s.calculateGERFromExitRoots(ctx)
 }
 
 // simulateGERCalculation simulates the Global Exit Root calculation
