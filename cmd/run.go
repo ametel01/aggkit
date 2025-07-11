@@ -555,6 +555,7 @@ func runClaimSponsorIfNeeded(
 	cfg claimsponsor.EVMClaimSponsorConfig,
 ) *claimsponsor.ClaimSponsor {
 	if !isNeeded([]string{aggkitcommon.BRIDGE}, components) || !cfg.Enabled {
+		log.Info("ClaimSponsor is not enabled")
 		return nil
 	}
 
@@ -584,6 +585,7 @@ func runClaimSponsorIfNeeded(
 		logger.Fatalf("error creating claim sponsor: %s", err)
 	}
 	go cs.Start(ctx)
+	log.Info("ClaimSponsor started")
 
 	return cs
 }
