@@ -12,7 +12,6 @@ import (
 	"github.com/agglayer/aggkit/db"
 	"github.com/agglayer/aggkit/log"
 	"github.com/agglayer/aggkit/sync"
-	tree "github.com/agglayer/aggkit/tree/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/russross/meddler"
 )
@@ -33,20 +32,18 @@ var (
 
 // Claim representation of a claim event
 type Claim struct {
-	LeafType            uint8          `meddler:"leaf_type"`
-	ProofLocalExitRoot  tree.Proof     `meddler:"proof_local_exit_root,merkleproof"`
-	ProofRollupExitRoot tree.Proof     `meddler:"proof_rollup_exit_root,merkleproof"`
-	GlobalIndex         *big.Int       `meddler:"global_index,bigint"`
-	MainnetExitRoot     common.Hash    `meddler:"mainnet_exit_root,hash"`
-	RollupExitRoot      common.Hash    `meddler:"rollup_exit_root,hash"`
-	OriginNetwork       uint32         `meddler:"origin_network"`
-	OriginTokenAddress  common.Address `meddler:"origin_token_address,address"`
-	DestinationNetwork  uint32         `meddler:"destination_network"`
-	DestinationAddress  common.Address `meddler:"destination_address,address"`
-	Amount              *big.Int       `meddler:"amount,bigint"`
-	Metadata            []byte         `meddler:"metadata"`
-	Status              ClaimStatus    `meddler:"status"`
-	TxID                string         `meddler:"tx_id"`
+	LeafType           uint8          `meddler:"leaf_type"`
+	GlobalIndex        *big.Int       `meddler:"global_index,bigint"`
+	MainnetExitRoot    common.Hash    `meddler:"mainnet_exit_root,hash"`
+	RollupExitRoot     common.Hash    `meddler:"rollup_exit_root,hash"`
+	OriginNetwork      uint32         `meddler:"origin_network"`
+	OriginTokenAddress common.Address `meddler:"origin_token_address,address"`
+	DestinationNetwork uint32         `meddler:"destination_network"`
+	DestinationAddress common.Address `meddler:"destination_address,address"`
+	Amount             *big.Int       `meddler:"amount,bigint"`
+	Metadata           []byte         `meddler:"metadata"`
+	Status             ClaimStatus    `meddler:"status"`
+	TxID               string         `meddler:"tx_id"`
 }
 
 func (c *Claim) Key() []byte {

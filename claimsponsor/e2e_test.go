@@ -59,27 +59,19 @@ func TestE2EL1toEVML2(t *testing.T) {
 		info, err := setup.L1Environment.InfoTreeSync.GetInfoByIndex(ctx, i)
 		require.NoError(t, err)
 
-		localProof, err := setup.L1Environment.BridgeSync.GetProof(ctx, i, info.MainnetExitRoot)
-		require.NoError(t, err)
-
-		rollupProof, err := setup.L1Environment.InfoTreeSync.GetRollupExitTreeMerkleProof(ctx, 0, common.Hash{})
-		require.NoError(t, err)
-
 		// Request to sponsor claim
 		globalIndex := bridgesync.GenerateGlobalIndex(true, 0, i)
 		err = claimer.AddClaimToQueue(&claimsponsor.Claim{
-			LeafType:            claimsponsor.LeafTypeAsset,
-			ProofLocalExitRoot:  localProof,
-			ProofRollupExitRoot: rollupProof,
-			GlobalIndex:         globalIndex,
-			MainnetExitRoot:     info.MainnetExitRoot,
-			RollupExitRoot:      info.RollupExitRoot,
-			OriginNetwork:       0,
-			OriginTokenAddress:  common.Address{},
-			DestinationNetwork:  setup.NetworkIDL2,
-			DestinationAddress:  setup.L2Environment.Auth.From,
-			Amount:              amount,
-			Metadata:            nil,
+			LeafType:           claimsponsor.LeafTypeAsset,
+			GlobalIndex:        globalIndex,
+			MainnetExitRoot:    info.MainnetExitRoot,
+			RollupExitRoot:     info.RollupExitRoot,
+			OriginNetwork:      0,
+			OriginTokenAddress: common.Address{},
+			DestinationNetwork: setup.NetworkIDL2,
+			DestinationAddress: setup.L2Environment.Auth.From,
+			Amount:             amount,
+			Metadata:           nil,
 		})
 		require.NoError(t, err)
 

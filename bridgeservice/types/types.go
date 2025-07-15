@@ -326,17 +326,11 @@ type L1InfoTreeLeafResponse struct {
 }
 
 // Claim represents a bridge claim submitted for processing.
-// It includes proofs, root hashes, origin/destination networks, token info, and metadata.
+// It includes root hashes, origin/destination networks, token info, and metadata.
 // @Description Claim sponsoring structure
 type ClaimRequest struct {
 	// Type of leaf node (e.g., asset or message)
 	LeafType uint8 `json:"leaf_type" example:"1"`
-
-	// Merkle proof for local exit root
-	ProofLocalExitRoot Proof `json:"proof_local_exit_root"`
-
-	// Merkle proof for rollup exit root
-	ProofRollupExitRoot Proof `json:"proof_rollup_exit_root"`
 
 	// Global leaf index
 	GlobalIndex BigIntString `json:"global_index" example:"123456789012345678901234567890"`

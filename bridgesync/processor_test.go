@@ -1537,7 +1537,6 @@ func TestDecodePreEtrogCalldata_Valid(t *testing.T) {
 	expectedClaim.GlobalExitRoot = crypto.Keccak256Hash(expectedClaim.MainnetExitRoot.Bytes(), expectedClaim.RollupExitRoot.Bytes())
 
 	claimAssetInput, err := bridgeV1ABI.Pack("claimAsset",
-		expectedClaim.ProofLocalExitRoot,
 		globalIndex,
 		expectedClaim.MainnetExitRoot,
 		expectedClaim.RollupExitRoot,

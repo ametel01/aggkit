@@ -1,12 +1,13 @@
 package claimsponsor
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"math/big"
 	"time"
 
-	"github.com/0xPolygon/cdk-contracts-tooling/contracts/pp/l2-sovereign-chain/polygonzkevmbridgev2"
 	"github.com/0xPolygon/zkevm-ethtx-manager/ethtxmanager"
 	ethtxtypes "github.com/0xPolygon/zkevm-ethtx-manager/types"
 	configTypes "github.com/agglayer/aggkit/config/types"
@@ -91,14 +92,14 @@ func NewEVMClaimSponsor(
 	waitTxToBeMinedPeriod time.Duration,
 	waitOnEmptyQueue time.Duration,
 ) (*ClaimSponsor, error) {
-	abi, err := polygonzkevmbridgev2.Polygonzkevmbridgev2MetaData.GetAbi()
+	abi, err := getPolygonZkEVMBridgeV2ABI()
 	if err != nil {
 		return nil, err
 	}
 
 	evmSponsor := &EVMClaimSponsor{
 		l2Client:     l2Client,
-		bridgeABI:    abi,
+		bridgeABI:    &abi,
 		bridgeAddr:   bridgeAddr,
 		sender:       sender,
 		gasOffest:    gasOffset,
@@ -182,34 +183,37 @@ func (c *EVMClaimSponsor) buildClaimTxData(claim *Claim) ([]byte, error) {
 	case LeafTypeAsset:
 		return c.bridgeABI.Pack(
 			"claimAsset",
-			claim.ProofLocalExitRoot,  // bytes32[32] smtProofLocalExitRoot
-			claim.ProofRollupExitRoot, // bytes32[32] smtProofRollupExitRoot
-			claim.GlobalIndex,         // uint256 globalIndex
-			claim.MainnetExitRoot,     // bytes32 mainnetExitRoot
-			claim.RollupExitRoot,      // bytes32 rollupExitRoot
-			claim.OriginNetwork,       // uint32 originNetwork
-			claim.OriginTokenAddress,  // address originTokenAddress,
-			claim.DestinationNetwork,  // uint32 destinationNetwork
-			claim.DestinationAddress,  // address destinationAddress
-			claim.Amount,              // uint256 amount
-			claim.Metadata,            // bytes metadata
+			claim.GlobalIndex,        // uint256 globalIndex
+			claim.MainnetExitRoot,    // bytes32 mainnetExitRoot
+			claim.RollupExitRoot,     // bytes32 rollupExitRoot
+			claim.OriginNetwork,      // uint32 originNetwork
+			claim.OriginTokenAddress, // address originTokenAddress,
+			claim.DestinationNetwork, // uint32 destinationNetwork
+			claim.DestinationAddress, // address destinationAddress
+			claim.Amount,             // uint256 amount
+			claim.Metadata,           // bytes metadata
 		)
 	case LeafTypeMessage:
 		return c.bridgeABI.Pack(
 			"claimMessage",
-			claim.ProofLocalExitRoot,  // bytes32[32] smtProofLocalExitRoot
-			claim.ProofRollupExitRoot, // bytes32[32] smtProofRollupExitRoot
-			claim.GlobalIndex,         // uint256 globalIndex
-			claim.MainnetExitRoot,     // bytes32 mainnetExitRoot
-			claim.RollupExitRoot,      // bytes32 rollupExitRoot
-			claim.OriginNetwork,       // uint32 originNetwork
-			claim.OriginTokenAddress,  // address originTokenAddress,
-			claim.DestinationNetwork,  // uint32 destinationNetwork
-			claim.DestinationAddress,  // address destinationAddress
-			claim.Amount,              // uint256 amount
-			claim.Metadata,            // bytes metadata
+			claim.GlobalIndex,        // uint256 globalIndex
+			claim.MainnetExitRoot,    // bytes32 mainnetExitRoot
+			claim.RollupExitRoot,     // bytes32 rollupExitRoot
+			claim.OriginNetwork,      // uint32 originNetwork
+			claim.OriginTokenAddress, // address originTokenAddress,
+			claim.DestinationNetwork, // uint32 destinationNetwork
+			claim.DestinationAddress, // address destinationAddress
+			claim.Amount,             // uint256 amount
+			claim.Metadata,           // bytes metadata
 		)
 	default:
 		return nil, fmt.Errorf("unexpected leaf type %d", claim.LeafType)
 	}
+}
+
+//go:embed polygonzkevmbridgev2_noproof.abi.json
+var bridgeABIJSON []byte
+
+func getPolygonZkEVMBridgeV2ABI() (abi.ABI, error) {
+	return abi.JSON(bytes.NewReader(bridgeABIJSON))
 }

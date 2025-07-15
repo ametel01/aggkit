@@ -881,7 +881,7 @@ func (b *BridgeService) ClaimProofHandler(c *gin.Context) {
 // @Tags claim-sponsoring
 // @Accept json
 // @Produce json
-// @Param Claim body types.ClaimRequest true "Claim request"
+// @Param Claim body claimsponsor.Claim true "Claim request"
 // @Success 200 {object} string "Claim is sponsored"
 // @Failure 400 {object} types.ErrorResponse "Bad Request"
 // @Failure 500 {object} types.ErrorResponse "Internal Server Error"

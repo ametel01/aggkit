@@ -132,64 +132,44 @@ func (c *Claim) decodeEtrogCalldata(senderAddr common.Address, data []any) (bool
 	// Unpack method inputs. Note that both claimAsset and claimMessage have the same interface
 	// for the relevant parts
 	// claimAsset/claimMessage(
-	// 	0: smtProofLocalExitRoot,
-	// 	1: smtProofRollupExitRoot,
-	// 	2: globalIndex,
-	// 	3: mainnetExitRoot,
-	// 	4: rollupExitRoot,
-	// 	5: originNetwork,
-	// 	6: originTokenAddress/originAddress,
-	// 	7: destinationNetwork,
-	// 	8: destinationAddress,
-	// 	9: amount,
-	// 	10: metadata,
+	// 	0: globalIndex,
+	// 	1: mainnetExitRoot,
+	// 	2: rollupExitRoot,
+	// 	3: originNetwork,
+	// 	4: originTokenAddress/originAddress,
+	// 	5: destinationNetwork,
+	// 	6: destinationAddress,
+	// 	7: amount,
+	// 	8: metadata,
 	// )
 
-	actualGlobalIndex, ok := data[2].(*big.Int)
+	actualGlobalIndex, ok := data[0].(*big.Int)
 	if !ok {
-		return false, fmt.Errorf("unexpected type for actualGlobalIndex, expected *big.Int got '%T'", data[2])
+		return false, fmt.Errorf("unexpected type for actualGlobalIndex, expected *big.Int got '%T'", data[0])
 	}
 	if actualGlobalIndex.Cmp(c.GlobalIndex) != 0 {
 		// not the claim we're looking for
 		return false, nil
 	}
-	proofLER := [types.DefaultHeight]common.Hash{}
-	proofLERBytes, ok := data[0].([types.DefaultHeight][common.HashLength]byte)
+
+	c.MainnetExitRoot, ok = data[1].([common.HashLength]byte)
 	if !ok {
-		return false, fmt.Errorf("unexpected type for proofLERBytes, expected [32][32]byte got '%T'", data[0])
+		return false, fmt.Errorf("unexpected type for 'MainnetExitRoot'. Expected '[32]byte', got '%T'", data[1])
 	}
 
-	proofRER := [types.DefaultHeight]common.Hash{}
-	proofRERBytes, ok := data[1].([types.DefaultHeight][common.HashLength]byte)
+	c.RollupExitRoot, ok = data[2].([common.HashLength]byte)
 	if !ok {
-		return false, fmt.Errorf("unexpected type for proofRERBytes, expected [32][32]byte got '%T'", data[1])
+		return false, fmt.Errorf("unexpected type for 'RollupExitRoot'. Expected '[32]byte', got '%T'", data[2])
 	}
 
-	for i := range int(types.DefaultHeight) {
-		proofLER[i] = proofLERBytes[i]
-		proofRER[i] = proofRERBytes[i]
-	}
-	c.ProofLocalExitRoot = proofLER
-	c.ProofRollupExitRoot = proofRER
-
-	c.MainnetExitRoot, ok = data[3].([common.HashLength]byte)
+	c.DestinationNetwork, ok = data[5].(uint32)
 	if !ok {
-		return false, fmt.Errorf("unexpected type for 'MainnetExitRoot'. Expected '[32]byte', got '%T'", data[3])
+		return false, fmt.Errorf("unexpected type for 'DestinationNetwork'. Expected 'uint32', got '%T'", data[5])
 	}
 
-	c.RollupExitRoot, ok = data[4].([common.HashLength]byte)
+	c.Metadata, ok = data[8].([]byte)
 	if !ok {
-		return false, fmt.Errorf("unexpected type for 'RollupExitRoot'. Expected '[32]byte', got '%T'", data[4])
-	}
-
-	c.DestinationNetwork, ok = data[7].(uint32)
-	if !ok {
-		return false, fmt.Errorf("unexpected type for 'DestinationNetwork'. Expected 'uint32', got '%T'", data[7])
-	}
-
-	c.Metadata, ok = data[10].([]byte)
-	if !ok {
-		return false, fmt.Errorf("unexpected type for 'claim Metadata'. Expected '[]byte', got '%T'", data[10])
+		return false, fmt.Errorf("unexpected type for 'claim Metadata'. Expected '[]byte', got '%T'", data[8])
 	}
 
 	c.GlobalExitRoot = crypto.Keccak256Hash(c.MainnetExitRoot.Bytes(), c.RollupExitRoot.Bytes())
@@ -201,20 +181,19 @@ func (c *Claim) decodeEtrogCalldata(senderAddr common.Address, data []any) (bool
 // decodePreEtrogCalldata decodes the claim calldata for pre-Etrog forks
 func (c *Claim) decodePreEtrogCalldata(senderAddr common.Address, data []any) (bool, error) {
 	// claimMessage/claimAsset(
-	// 	0: bytes32[32] smtProof,
-	// 	1: uint32 index,
-	// 	2: bytes32 mainnetExitRoot,
-	// 	3: bytes32 rollupExitRoot,
-	// 	4: uint32 originNetwork,
-	// 	5: address originTokenAddress,
-	// 	6: uint32 destinationNetwork,
-	// 	7: address destinationAddress,
-	// 	8: uint256 amount,
-	// 	9: bytes metadata
+	// 	0: uint32 index,
+	// 	1: bytes32 mainnetExitRoot,
+	// 	2: bytes32 rollupExitRoot,
+	// 	3: uint32 originNetwork,
+	// 	4: address originTokenAddress,
+	// 	5: uint32 destinationNetwork,
+	// 	6: address destinationAddress,
+	// 	7: uint256 amount,
+	// 	8: bytes metadata
 	// )
-	actualGlobalIndex, ok := data[1].(uint32)
+	actualGlobalIndex, ok := data[0].(uint32)
 	if !ok {
-		return false, fmt.Errorf("unexpected type for actualGlobalIndex, expected uint32 got '%T'", data[1])
+		return false, fmt.Errorf("unexpected type for actualGlobalIndex, expected uint32 got '%T'", data[0])
 	}
 
 	if new(big.Int).SetUint64(uint64(actualGlobalIndex)).Cmp(c.GlobalIndex) != 0 {
@@ -222,35 +201,24 @@ func (c *Claim) decodePreEtrogCalldata(senderAddr common.Address, data []any) (b
 		return false, nil
 	}
 
-	proof := [types.DefaultHeight]common.Hash{}
-	proofBytes, ok := data[0].([types.DefaultHeight][common.HashLength]byte)
+	c.MainnetExitRoot, ok = data[1].([common.HashLength]byte)
 	if !ok {
-		return false, fmt.Errorf("unexpected type for proofLERBytes, expected [32][32]byte got '%T'", data[0])
+		return false, fmt.Errorf("unexpected type for 'MainnetExitRoot'. Expected '[32]byte', got '%T'", data[1])
 	}
 
-	for i := range int(types.DefaultHeight) {
-		proof[i] = proofBytes[i]
-	}
-	c.ProofLocalExitRoot = proof
-
-	c.MainnetExitRoot, ok = data[2].([common.HashLength]byte)
+	c.RollupExitRoot, ok = data[2].([common.HashLength]byte)
 	if !ok {
-		return false, fmt.Errorf("unexpected type for 'MainnetExitRoot'. Expected '[32]byte', got '%T'", data[2])
+		return false, fmt.Errorf("unexpected type for 'RollupExitRoot'. Expected '[32]byte', got '%T'", data[2])
 	}
 
-	c.RollupExitRoot, ok = data[3].([common.HashLength]byte)
+	c.DestinationNetwork, ok = data[5].(uint32)
 	if !ok {
-		return false, fmt.Errorf("unexpected type for 'RollupExitRoot'. Expected '[32]byte', got '%T'", data[3])
+		return false, fmt.Errorf("unexpected type for 'DestinationNetwork'. Expected 'uint32', got '%T'", data[5])
 	}
 
-	c.DestinationNetwork, ok = data[6].(uint32)
+	c.Metadata, ok = data[8].([]byte)
 	if !ok {
-		return false, fmt.Errorf("unexpected type for 'DestinationNetwork'. Expected 'uint32', got '%T'", data[6])
-	}
-
-	c.Metadata, ok = data[9].([]byte)
-	if !ok {
-		return false, fmt.Errorf("unexpected type for 'Metadata'. Expected '[]byte', got '%T'", data[9])
+		return false, fmt.Errorf("unexpected type for 'Metadata'. Expected '[]byte', got '%T'", data[8])
 	}
 
 	c.GlobalExitRoot = crypto.Keccak256Hash(c.MainnetExitRoot.Bytes(), c.RollupExitRoot.Bytes())
