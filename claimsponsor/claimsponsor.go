@@ -141,6 +141,9 @@ func (c *ClaimSponsor) claim(ctx context.Context) error {
 		if err := c.updateClaimTxID(claim.GlobalIndex, txID); err != nil {
 			return fmt.Errorf("error updating claim txID: %w", err)
 		}
+		if err := c.updateClaimStatus(claim.GlobalIndex, WIPClaimStatus); err != nil {
+			return err
+		}
 	}
 
 	c.logger.Infof("waiting for tx %s with global index %s to be processed", claim.TxID, claim.GlobalIndex.String())
