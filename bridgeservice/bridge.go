@@ -52,7 +52,7 @@ const (
 	globalIndexParam  = "global_index"
 
 	binarySearchDivider = 2
-	mainnetNetworkID    = 1
+	mainnetNetworkID    = 0
 
 	errNetworkID         = "unsupported network id: %v"
 	errSetupRequest      = "failed to setup request: %v"
@@ -334,7 +334,7 @@ func (b *BridgeService) GetBridgesHandler(c *gin.Context) {
 				gin.H{"error": fmt.Sprintf("failed to get bridges for the L1 network, error: %s", err)})
 			return
 		}
-	case networkID == b.networkID:
+	case networkID == b.networkID || b.isValidL2NetworkID(networkID):
 		bridges, count, err = b.bridgeL2.GetBridgesPaged(ctx, pageNumber, pageSize, depositCountPtr, networkIDs, fromAddress)
 		if err != nil {
 			b.logger.Errorf("failed to get bridges for L2 network (ID=%d): %v", networkID, err)
@@ -435,7 +435,7 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 				gin.H{"error": fmt.Sprintf("failed to get claims for the L1 network, error: %s", err)})
 			return
 		}
-	case networkID == b.networkID:
+	case networkID == b.networkID || b.isValidL2NetworkID(networkID):
 		claims, count, err = b.bridgeL2.GetClaimsPaged(ctx, pageNumber, pageSize, networkIDs, fromAddress)
 		if err != nil {
 			b.logger.Warnf("failed to get claims for L2 network (ID=%d): %v", networkID, err)
@@ -513,7 +513,7 @@ func (b *BridgeService) GetTokenMappingsHandler(c *gin.Context) {
 	switch {
 	case networkID == mainnetNetworkID:
 		tokenMappings, tokenMappingsCount, err = b.bridgeL1.GetTokenMappings(ctx, pageNumber, pageSize)
-	case b.networkID == networkID:
+	case b.networkID == networkID || b.isValidL2NetworkID(networkID):
 		tokenMappings, tokenMappingsCount, err = b.bridgeL2.GetTokenMappings(ctx, pageNumber, pageSize)
 	default:
 		b.logger.Warnf(errNetworkID, networkID)
@@ -577,7 +577,7 @@ func (b *BridgeService) GetLegacyTokenMigrationsHandler(c *gin.Context) {
 	switch {
 	case networkID == mainnetNetworkID:
 		tokenMigrations, tokenMigrationsCount, err = b.bridgeL1.GetLegacyTokenMigrations(ctx, pageNumber, pageSize)
-	case b.networkID == networkID:
+	case b.networkID == networkID || b.isValidL2NetworkID(networkID):
 		tokenMigrations, tokenMigrationsCount, err = b.bridgeL2.GetLegacyTokenMigrations(ctx, pageNumber, pageSize)
 	default:
 		b.logger.Warnf(errNetworkID, networkID)
@@ -643,7 +643,7 @@ func (b *BridgeService) L1InfoTreeIndexForBridgeHandler(c *gin.Context) {
 	switch {
 	case networkID == mainnetNetworkID:
 		l1InfoTreeIndex, err = b.getFirstL1InfoTreeIndexForL1Bridge(ctx, depositCount)
-	case b.networkID == networkID:
+	case b.networkID == networkID || b.isValidL2NetworkID(networkID):
 		l1InfoTreeIndex, err = b.getFirstL1InfoTreeIndexForL2Bridge(ctx, depositCount)
 	default:
 		b.logger.Warnf(errNetworkID, networkID)
@@ -710,7 +710,7 @@ func (b *BridgeService) InjectedL1InfoLeafHandler(c *gin.Context) {
 	switch {
 	case networkID == mainnetNetworkID:
 		l1InfoLeaf, err = b.l1InfoTree.GetInfoByIndex(ctx, l1InfoTreeIndex)
-	case b.networkID == networkID:
+	case b.networkID == networkID || b.isValidL2NetworkID(networkID):
 		e, err := b.injectedGERs.GetFirstGERAfterL1InfoTreeIndex(ctx, l1InfoTreeIndex)
 		if err != nil {
 			b.logger.Errorf("failed to get injected global exit root for leaf index=%d: %v", l1InfoTreeIndex, err)
@@ -799,10 +799,23 @@ func (b *BridgeService) ClaimProofHandler(c *gin.Context) {
 
 	info, err := b.l1InfoTree.GetInfoByIndex(ctx, l1InfoTreeIndex)
 	if err != nil {
-		b.logger.Errorf("failed to get L1 info tree leaf for index %d: %v", l1InfoTreeIndex, err)
-		c.JSON(http.StatusInternalServerError,
-			gin.H{"error": fmt.Sprintf("failed to get l1 info tree leaf for index %d: %s", l1InfoTreeIndex, err)})
-		return
+		// In sandbox mode, if the specific leaf index doesn't exist, try to get the last available leaf
+		if b.isSandboxMode() {
+			lastInfo, lastErr := b.l1InfoTree.GetLastInfo()
+			if lastErr != nil {
+				b.logger.Errorf("failed to get L1 info tree leaf for index %d: %v", l1InfoTreeIndex, err)
+				c.JSON(http.StatusInternalServerError,
+					gin.H{"error": fmt.Sprintf("failed to get l1 info tree leaf for index %d: %s", l1InfoTreeIndex, err)})
+				return
+			}
+			info = lastInfo
+			b.logger.Warnf("sandbox mode: using last available L1 info tree leaf (index %d) instead of requested index %d", lastInfo.L1InfoTreeIndex, l1InfoTreeIndex)
+		} else {
+			b.logger.Errorf("failed to get L1 info tree leaf for index %d: %v", l1InfoTreeIndex, err)
+			c.JSON(http.StatusInternalServerError,
+				gin.H{"error": fmt.Sprintf("failed to get l1 info tree leaf for index %d: %s", l1InfoTreeIndex, err)})
+			return
+		}
 	}
 
 	var proofLocalExitRoot tree.Proof
@@ -816,13 +829,20 @@ func (b *BridgeService) ClaimProofHandler(c *gin.Context) {
 			return
 		}
 
-	case networkID == b.networkID:
+	case networkID == b.networkID || b.isValidL2NetworkID(networkID):
 		localExitRoot, err := b.l1InfoTree.GetLocalExitRoot(ctx, networkID, info.RollupExitRoot)
 		if err != nil {
-			b.logger.Errorf("failed to get local exit root from rollup exit tree: %v", err)
-			c.JSON(http.StatusInternalServerError,
-				gin.H{"error": fmt.Sprintf("failed to get local exit root from rollup exit tree, error: %s", err)})
-			return
+			// In sandbox mode, if rollup exit root lookup fails, use a mock local exit root
+			if b.isSandboxMode() {
+				// Use the info's mainnet exit root as a fallback in sandbox mode
+				localExitRoot = info.MainnetExitRoot
+				b.logger.Warnf("sandbox mode: using mainnet exit root as local exit root fallback due to rollup exit tree lookup failure: %v", err)
+			} else {
+				b.logger.Errorf("failed to get local exit root from rollup exit tree: %v", err)
+				c.JSON(http.StatusInternalServerError,
+					gin.H{"error": fmt.Sprintf("failed to get local exit root from rollup exit tree, error: %s", err)})
+				return
+			}
 		}
 		proofLocalExitRoot, err = b.bridgeL2.GetProof(ctx, depositCount, localExitRoot)
 		if err != nil {
@@ -907,7 +927,7 @@ func (b *BridgeService) GetLastReorgEventHandler(c *gin.Context) {
 				gin.H{"error": fmt.Sprintf("failed to get last reorg event for the L1 network, error: %s", err)})
 			return
 		}
-	case networkID == b.networkID:
+	case networkID == b.networkID || b.isValidL2NetworkID(networkID):
 		reorgEvent, err = b.bridgeL2.GetLastReorgEvent(ctx)
 		if err != nil {
 			b.logger.Errorf("failed to get last reorg event for L2 network (ID=%d): %v", networkID, err)
@@ -1057,6 +1077,21 @@ func (b *BridgeService) getFirstL1InfoTreeIndexForL2Bridge(ctx context.Context, 
 	// (produced by the smart contract call verifyBatches / verifyBatchesTrustedAggregator)
 	// are included in the L1 info tree. As per the current implementation (smart contracts) of the protocol
 	// this is true. This could change in the future
+	
+	// In sandbox mode, if verified batches are not available, return a default L1 info tree index
+	if b.isSandboxMode() {
+		_, err := b.l1InfoTree.GetLastVerifiedBatches(b.networkID)
+		if err != nil {
+			// In sandbox mode, if no verified batches exist, assume the latest L1 info tree index
+			lastInfo, infoErr := b.l1InfoTree.GetLastInfo()
+			if infoErr != nil {
+				return 0, err // Return original verified batches error
+			}
+			return lastInfo.L1InfoTreeIndex, nil
+		}
+		// If verified batches exist in sandbox mode, continue with normal processing
+	}
+	
 	lastVerified, err := b.l1InfoTree.GetLastVerifiedBatches(b.networkID)
 	if err != nil {
 		return 0, err
@@ -1208,4 +1243,18 @@ func (b *BridgeService) enhanceClaimProofWithSandbox(claimProof *types.ClaimProo
 // isClaimInstantlyReady returns true if claims are instantly ready in sandbox mode
 func (b *BridgeService) isClaimInstantlyReady() bool {
 	return b.isSandboxMode() && b.sandboxConfig.InstantClaims
+}
+
+// isValidL2NetworkID validates if a network ID is a valid L2 network ID
+// For multi-L2 scenarios, this allows network IDs 1-3 for L2 chains, and 31337-31339 for local development
+func (b *BridgeService) isValidL2NetworkID(networkID uint32) bool {
+	// Allow standard L2 network IDs (1-3) for multi-L2 scenarios
+	if networkID >= 1 && networkID <= 3 {
+		return true
+	}
+	// Allow local development network IDs (31337-31339)
+	if networkID >= 31337 && networkID <= 31339 {
+		return true
+	}
+	return false
 }
