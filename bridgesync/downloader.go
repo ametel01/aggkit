@@ -2,6 +2,7 @@ package bridgesync
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/big"
 
@@ -58,12 +59,19 @@ const (
 	methodIDLength = 4
 )
 
+// getDestinationNetwork returns the chain ID as the destination network
+func getDestinationNetwork(chainID uint64) uint32 {
+	// For sandbox/multi-L2 setup, destination_network should be the chain ID itself
+	return uint32(chainID)
+}
+
 func buildAppender(
 	client aggkittypes.EthClienter,
 	bridgeAddr common.Address,
 	syncFullClaims bool,
 	bridgeContractV2 *polygonzkevmbridgev2.Polygonzkevmbridgev2,
 	logger *logger.Logger,
+	syncerType BridgeSyncerType,
 ) (sync.LogAppenderMap, error) {
 	bridgeContractV1, err := polygonzkevmbridge.NewPolygonzkevmbridge(bridgeAddr, client)
 	if err != nil {
@@ -87,10 +95,10 @@ func buildAppender(
 	appender[bridgeEventSignature] = buildBridgeEventHandler(
 		bridgeContractV2, client, bridgeAddr, gasTokenAddress, logger)
 	appender[claimEventSignature] = buildClaimEventHandler(
-		bridgeContractV2, client, bridgeAddr, syncFullClaims, logger)
+		bridgeContractV2, client, bridgeAddr, syncFullClaims, logger, syncerType)
 	appender[claimEventSignaturePreEtrog] = buildClaimEventHandlerPreEtrog(
 		bridgeContractV1, client,
-		bridgeAddr, syncFullClaims, logger)
+		bridgeAddr, syncFullClaims, logger, syncerType)
 	appender[tokenMappingEventSignature] = buildTokenMappingHandler(
 		bridgeContractV2, client, bridgeAddr, logger)
 	appender[setSovereignTokenEventSignature] = buildSetSovereignTokenHandler(
@@ -145,11 +153,23 @@ func buildBridgeEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2
 // buildClaimEventHandler creates a handler for the Claim event log.
 func buildClaimEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2,
 	client aggkittypes.EthClienter, bridgeAddr common.Address, syncFullClaims bool, logger *logger.Logger,
+	syncerType BridgeSyncerType,
 ) func(*sync.EVMBlock, types.Log) error {
 	return func(b *sync.EVMBlock, l types.Log) error {
 		claimEvent, err := contract.ParseClaimEvent(l)
 		if err != nil {
 			return fmt.Errorf("error parsing Claim event log %+v: %w", l, err)
+		}
+
+		// Determine destination network (chain ID) based on the processing chain
+		var destinationNetwork uint32
+		chainID, err := client.ChainID(context.Background())
+		if err != nil {
+			logger.Warnf("failed to get chain ID, defaulting to chain ID 1: %v", err)
+			destinationNetwork = 1
+		} else {
+			// Use chain ID as destination network
+			destinationNetwork = getDestinationNetwork(chainID.Uint64())
 		}
 
 		claim := &Claim{
@@ -159,6 +179,7 @@ func buildClaimEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2,
 			OriginNetwork:      claimEvent.OriginNetwork,
 			OriginAddress:      claimEvent.OriginAddress,
 			DestinationAddress: claimEvent.DestinationAddress,
+			DestinationNetwork: destinationNetwork,
 			Amount:             claimEvent.Amount,
 			BlockTimestamp:     b.Timestamp,
 			TxHash:             l.TxHash,
@@ -179,11 +200,23 @@ func buildClaimEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2,
 // buildClaimEventHandlerPreEtrog creates a handler for the Claim event log for pre-Etrog contracts.
 func buildClaimEventHandlerPreEtrog(contract *polygonzkevmbridge.Polygonzkevmbridge,
 	client aggkittypes.EthClienter, bridgeAddr common.Address, syncFullClaims bool, logger *logger.Logger,
+	syncerType BridgeSyncerType,
 ) func(*sync.EVMBlock, types.Log) error {
 	return func(b *sync.EVMBlock, l types.Log) error {
 		claimEvent, err := contract.ParseClaimEvent(l)
 		if err != nil {
 			return fmt.Errorf("error parsing Claim event log %+v: %w", l, err)
+		}
+
+		// Determine destination network (chain ID) based on the processing chain
+		var destinationNetwork uint32
+		chainID, err := client.ChainID(context.Background())
+		if err != nil {
+			logger.Warnf("failed to get chain ID, defaulting to chain ID 1: %v", err)
+			destinationNetwork = 1
+		} else {
+			// Use chain ID as destination network
+			destinationNetwork = getDestinationNetwork(chainID.Uint64())
 		}
 
 		claim := &Claim{
@@ -193,6 +226,7 @@ func buildClaimEventHandlerPreEtrog(contract *polygonzkevmbridge.Polygonzkevmbri
 			OriginNetwork:      claimEvent.OriginNetwork,
 			OriginAddress:      claimEvent.OriginAddress,
 			DestinationAddress: claimEvent.DestinationAddress,
+			DestinationNetwork: destinationNetwork,
 			Amount:             claimEvent.Amount,
 		}
 

@@ -1184,6 +1184,17 @@ func (b *BridgeService) createSandboxMetadata() *types.SandboxMetadata {
 		return nil
 	}
 
+	// Build list of supported L2 networks
+	primaryL2ChainID := uint32(b.sandboxConfig.L2Node.ChainID)
+	supportedL2Networks := []uint32{primaryL2ChainID}
+	
+	// Add other valid L2 network IDs that the bridge service supports
+	for networkID := uint32(1); networkID <= 3; networkID++ {
+		if networkID != primaryL2ChainID && b.isValidL2NetworkID(networkID) {
+			supportedL2Networks = append(supportedL2Networks, networkID)
+		}
+	}
+	
 	return &types.SandboxMetadata{
 		SandboxMode:      true,
 		AutoSettle:       b.sandboxConfig.AutoSettle,
@@ -1194,7 +1205,9 @@ func (b *BridgeService) createSandboxMetadata() *types.SandboxMetadata {
 		DevMetadata: map[string]interface{}{
 			"bridge_mode": "sandbox",
 			"l1_chain_id": b.sandboxConfig.L1Node.ChainID,
-			"l2_chain_id": b.sandboxConfig.L2Node.ChainID,
+			"l2_chain_id": b.sandboxConfig.L2Node.ChainID, // Primary L2
+			"supported_l2_networks": supportedL2Networks, // All supported L2s
+			"multi_l2_enabled": len(supportedL2Networks) > 1,
 		},
 	}
 }
