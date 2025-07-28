@@ -422,25 +422,28 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 		networkID, pageNumber, pageSize, networkIDs, fromAddress)
 
 	var (
-		claims []*bridgesync.Claim
-		count  int
+		completedClaims []*bridgesync.Claim
+		pendingBridges  []*bridgesync.Bridge
+		completedCount  int
+		pendingCount    int
 	)
 
+	// Get completed claims from the network where they are executed (destination network)
 	switch {
 	case networkID == mainnetNetworkID:
-		claims, count, err = b.bridgeL1.GetClaimsPaged(ctx, pageNumber, pageSize, networkIDs, fromAddress)
+		completedClaims, completedCount, err = b.bridgeL1.GetClaimsPaged(ctx, pageNumber, pageSize, networkIDs, fromAddress)
 		if err != nil {
-			b.logger.Warnf("failed to get claims for L1 network: %v", err)
+			b.logger.Warnf("failed to get completed claims for L1 network: %v", err)
 			c.JSON(http.StatusInternalServerError,
-				gin.H{"error": fmt.Sprintf("failed to get claims for the L1 network, error: %s", err)})
+				gin.H{"error": fmt.Sprintf("failed to get completed claims for the L1 network, error: %s", err)})
 			return
 		}
 	case networkID == b.networkID || b.isValidL2NetworkID(networkID):
-		claims, count, err = b.bridgeL2.GetClaimsPaged(ctx, pageNumber, pageSize, networkIDs, fromAddress)
+		completedClaims, completedCount, err = b.bridgeL2.GetClaimsPaged(ctx, pageNumber, pageSize, networkIDs, fromAddress)
 		if err != nil {
-			b.logger.Warnf("failed to get claims for L2 network (ID=%d): %v", networkID, err)
+			b.logger.Warnf("failed to get completed claims for L2 network (ID=%d): %v", networkID, err)
 			c.JSON(http.StatusInternalServerError,
-				gin.H{"error": fmt.Sprintf("failed to get claims for the L2 network (ID=%d), error: %s", networkID, err)})
+				gin.H{"error": fmt.Sprintf("failed to get completed claims for the L2 network (ID=%d), error: %s", networkID, err)})
 			return
 		}
 	default:
@@ -449,17 +452,65 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 		return
 	}
 
-	claimResponses := aggkitcommon.MapSlice(claims, NewClaimResponse)
+	// Get pending claims from all bridge databases where destination_network matches
+	// We need to check both L1 and L2 bridge databases for pending claims targeting this network
+	// Convert network ID to chain ID for filtering
+	targetChainID := b.networkIDToChainID(networkID)
+	
+	b.logger.Debugf("Looking for pending claims targeting network ID %d (chain ID %d)", networkID, targetChainID)
+	
+	var allPendingBridges []*bridgesync.Bridge
+	var totalPendingCount int
+
+	// Check L1 bridge database for pending claims to this network
+	l1PendingBridges, l1PendingCount, err := b.bridgeL1.GetPendingClaimsPaged(ctx, pageNumber, pageSize, []uint32{targetChainID}, fromAddress)
+	if err != nil {
+		b.logger.Warnf("failed to get pending claims from L1 for network (ID=%d, chain ID=%d): %v", networkID, targetChainID, err)
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": fmt.Sprintf("failed to get pending claims from L1 for network (ID=%d), error: %s", networkID, err)})
+		return
+	}
+	allPendingBridges = append(allPendingBridges, l1PendingBridges...)
+	totalPendingCount += l1PendingCount
+
+	// Check L2 bridge database for pending claims to this network
+	l2PendingBridges, l2PendingCount, err := b.bridgeL2.GetPendingClaimsPaged(ctx, pageNumber, pageSize, []uint32{targetChainID}, fromAddress)
+	if err != nil {
+		b.logger.Warnf("failed to get pending claims from L2 for network (ID=%d, chain ID=%d): %v", networkID, targetChainID, err)
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": fmt.Sprintf("failed to get pending claims from L2 for network (ID=%d), error: %s", networkID, err)})
+		return
+	}
+	allPendingBridges = append(allPendingBridges, l2PendingBridges...)
+	totalPendingCount += l2PendingCount
+
+	pendingBridges = allPendingBridges
+	pendingCount = totalPendingCount
+
+	// Combine completed and pending claims
+	var claimResponses []*types.ClaimResponse
+	
+	// Add completed claims
+	completedResponses := aggkitcommon.MapSlice(completedClaims, NewClaimResponse)
+	claimResponses = append(claimResponses, completedResponses...)
+	
+	// Add pending claims
+	pendingResponses := aggkitcommon.MapSlice(pendingBridges, NewPendingClaimResponse)
+	claimResponses = append(claimResponses, pendingResponses...)
+	
+	totalCount := completedCount + pendingCount
 
 	result := types.ClaimsResult{
 		Claims: claimResponses,
-		Count:  count,
+		Count:  totalCount,
 	}
 
 	// Add sandbox metadata to claims result if in sandbox mode
 	if sandboxMetadata := b.createSandboxMetadata(); sandboxMetadata != nil {
 		result.SandboxMetadata = sandboxMetadata
-		result.SandboxMetadata.DevMetadata["total_claims"] = count
+		result.SandboxMetadata.DevMetadata["total_claims"] = totalCount
+		result.SandboxMetadata.DevMetadata["completed_claims"] = completedCount
+		result.SandboxMetadata.DevMetadata["pending_claims"] = pendingCount
 
 		// Add instant claims information for sandbox mode
 		if b.sandboxConfig.InstantClaims {
@@ -1256,6 +1307,38 @@ func (b *BridgeService) enhanceClaimProofWithSandbox(claimProof *types.ClaimProo
 // isClaimInstantlyReady returns true if claims are instantly ready in sandbox mode
 func (b *BridgeService) isClaimInstantlyReady() bool {
 	return b.isSandboxMode() && b.sandboxConfig.InstantClaims
+}
+
+// networkIDToChainID maps network IDs to their corresponding chain IDs
+func (b *BridgeService) networkIDToChainID(networkID uint32) uint32 {
+	// Handle sandbox mode mapping
+	if b.isSandboxMode() {
+		switch networkID {
+		case 0:
+			return uint32(b.sandboxConfig.L1Node.ChainID) // mainnet (usually 1)
+		case 1:
+			return uint32(b.sandboxConfig.L2Node.ChainID) // L2 (usually 1101)
+		case 2:
+			return 137 // Polygon
+		case 3:
+			return 8453 // Base
+		}
+	}
+	
+	// Default mapping for non-sandbox mode
+	switch networkID {
+	case 0:
+		return 1 // Ethereum mainnet
+	case 1:
+		return 1101 // Polygon zkEVM
+	case 2:
+		return 137 // Polygon
+	case 3:
+		return 8453 // Base
+	}
+	
+	// For unknown network IDs, return the network ID itself
+	return networkID
 }
 
 // isValidL2NetworkID validates if a network ID is a valid L2 network ID

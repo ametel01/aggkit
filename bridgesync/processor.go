@@ -515,6 +515,109 @@ func (p *processor) GetClaimsPaged(
 	return claims, claimsCount, nil
 }
 
+// GetPendingClaimsPaged returns bridges that haven't been claimed yet (pending claims)
+func (p *processor) GetPendingClaimsPaged(
+	ctx context.Context, pageNumber, pageSize uint32, networkIDs []uint32, fromAddress string,
+) ([]*Bridge, int, error) {
+	tx, err := p.startTransaction(ctx, true)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer p.rollbackTransaction(tx)
+
+	// Build WHERE clause to find bridges that haven't been claimed
+	// We need to find bridges where the global index doesn't exist in the claims table
+	whereClause := p.buildPendingClaimsFilterClause(networkIDs, fromAddress)
+	
+	// For pending claims, we need bridges that don't have corresponding claims
+	// Use a LEFT JOIN to find bridges without claims
+	query := fmt.Sprintf(`
+		SELECT COUNT(DISTINCT b.deposit_count) 
+		FROM %s b
+		LEFT JOIN %s c ON (
+			CASE 
+				WHEN b.origin_network = 0 THEN 
+					-- Mainnet: global_index = (1 << 64) + deposit_count
+					c.global_index = (1 << 64) + b.deposit_count
+				ELSE 
+					-- L2: global_index = (origin_network << 32) + deposit_count  
+					c.global_index = (CAST(b.origin_network AS BIGINT) << 32) + b.deposit_count
+			END
+		)
+		WHERE c.global_index IS NULL%s`,
+		bridgeTableName, claimTableName, whereClause)
+
+	var pendingClaimsCount int
+	err = tx.QueryRow(query).Scan(&pendingClaimsCount)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if pendingClaimsCount == 0 {
+		return []*Bridge{}, 0, nil
+	}
+
+	offset, err := p.calculateOffset(pageNumber, pageSize, pendingClaimsCount, "pending claims")
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get the actual pending bridges
+	orderByClause := "b.block_num DESC, b.block_pos DESC"
+	
+	bridgeQuery := fmt.Sprintf(`
+		SELECT b.* 
+		FROM %s b
+		LEFT JOIN %s c ON (
+			CASE 
+				WHEN b.origin_network = 0 THEN 
+					c.global_index = (1 << 64) + b.deposit_count
+				ELSE 
+					c.global_index = (CAST(b.origin_network AS BIGINT) << 32) + b.deposit_count
+			END
+		)
+		WHERE c.global_index IS NULL%s
+		ORDER BY %s
+		LIMIT %d OFFSET %d`,
+		bridgeTableName, claimTableName, whereClause, orderByClause, pageSize, offset)
+
+	rows, err := tx.Query(bridgeQuery)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			p.log.Warnf("error closing rows: %v", err)
+		}
+	}()
+
+	var bridges []*Bridge
+	if err = meddler.ScanAll(rows, &bridges); err != nil {
+		return nil, 0, err
+	}
+
+	return bridges, pendingClaimsCount, nil
+}
+
+// buildPendingClaimsFilterClause builds the WHERE clause for finding pending claims
+func (p *processor) buildPendingClaimsFilterClause(networkIDs []uint32, fromAddress string) string {
+	const clauseCapacity = 2
+	clauses := make([]string, 0, clauseCapacity)
+	
+	if len(networkIDs) > 0 {
+		clauses = append(clauses, buildNetworkIDsFilter(networkIDs, "b.destination_network"))
+	}
+
+	if fromAddress != "" && common.IsHexAddress(fromAddress) {
+		clauses = append(clauses, fmt.Sprintf("UPPER(b.from_address) LIKE '%s'", fromAddress))
+	}
+
+	if len(clauses) > 0 {
+		return " AND " + strings.Join(clauses, " AND ")
+	}
+	return ""
+}
+
 // buildClaimsFilterClause builds the WHERE clause for the claims table
 // based on the provided networkIDs and fromAddress
 func (p *processor) buildClaimsFilterClause(networkIDs []uint32, fromAddress string) string {

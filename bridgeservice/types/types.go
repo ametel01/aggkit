@@ -199,6 +199,12 @@ type ClaimResponse struct {
 
 	// Mainnet exit root associated with the claim
 	MainnetExitRoot Hash `json:"mainnet_exit_root" example:"0x27ae5ba08d7291c96c8cbddcc148bf48a6d68c7974b94356f53754ef6171d757"` //nolint:lll
+
+	// Status indicating whether the claim is pending or completed
+	Status string `json:"status" example:"pending"`
+
+	// Type of the claim event (asset or message)
+	Type string `json:"type" example:"asset"`
 }
 
 // TokenMappingsResult contains the token mappings and the total count of token mappings

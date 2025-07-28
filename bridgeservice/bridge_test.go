@@ -638,6 +638,17 @@ func TestGetClaimsHandler(t *testing.T) {
 		bridgeMocks.bridgeL1.EXPECT().
 			GetClaimsPaged(mock.Anything, page, pageSize, mock.Anything, mock.Anything).
 			Return(expectedClaims, len(expectedClaims), nil)
+		
+		// Mock pending claims from L1 bridge database (empty for this test)
+		// mainnetNetworkID (0) maps to chain ID 1
+		bridgeMocks.bridgeL1.EXPECT().
+			GetPendingClaimsPaged(mock.Anything, page, pageSize, []uint32{1}, mock.Anything).
+			Return([]*bridgesync.Bridge{}, 0, nil)
+		
+		// Mock pending claims from L2 bridge database (empty for this test)
+		bridgeMocks.bridgeL2.EXPECT().
+			GetPendingClaimsPaged(mock.Anything, page, pageSize, []uint32{1}, mock.Anything).
+			Return([]*bridgesync.Bridge{}, 0, nil)
 
 		queryParams := url.Values{
 			networkIDParam:  []string{fmt.Sprintf("%d", mainnetNetworkID)},
@@ -679,6 +690,17 @@ func TestGetClaimsHandler(t *testing.T) {
 		bridgeMocks.bridgeL2.EXPECT().
 			GetClaimsPaged(mock.Anything, page, pageSize, mock.Anything, mock.Anything).
 			Return(expectedClaims, len(expectedClaims), nil)
+		
+		// Mock pending claims from L1 bridge database (empty for this test)
+		// Network ID 10 maps to chain ID 1101 (in default mapping)
+		bridgeMocks.bridgeL1.EXPECT().
+			GetPendingClaimsPaged(mock.Anything, page, pageSize, []uint32{10}, mock.Anything).
+			Return([]*bridgesync.Bridge{}, 0, nil)
+		
+		// Mock pending claims from L2 bridge database (empty for this test) 
+		bridgeMocks.bridgeL2.EXPECT().
+			GetPendingClaimsPaged(mock.Anything, page, pageSize, []uint32{10}, mock.Anything).
+			Return([]*bridgesync.Bridge{}, 0, nil)
 
 		query := url.Values{}
 		query.Set(networkIDParam, "10")
@@ -714,13 +736,13 @@ func TestGetClaimsHandler(t *testing.T) {
 			Return(nil, 0, errors.New(fooErrMsg))
 
 		query := url.Values{}
-		query.Set(networkIDParam, "1")
+		query.Set(networkIDParam, "0")  // Use L1 mainnet network ID
 		query.Set(pageNumberParam, "1")
 		query.Set(pageSizeParam, "10")
 
 		w := performRequest(t, bridgeMocks.bridge.router, http.MethodGet, fmt.Sprintf("%s/claims?%s", BridgeV1Prefix, query.Encode()), nil)
 		require.Equal(t, http.StatusInternalServerError, w.Code)
-		require.Contains(t, w.Body.String(), "failed to get claims for the L1 network")
+		require.Contains(t, w.Body.String(), "failed to get completed claims for the L1 network")
 	})
 
 	t.Run("GetClaims for L2 network failed", func(t *testing.T) {
@@ -736,7 +758,7 @@ func TestGetClaimsHandler(t *testing.T) {
 
 		w := performRequest(t, bridgeMocks.bridge.router, http.MethodGet, fmt.Sprintf("%s/claims?%s", BridgeV1Prefix, query.Encode()), nil)
 		require.Equal(t, http.StatusInternalServerError, w.Code)
-		require.Contains(t, w.Body.String(), "failed to get claims for the L2 network")
+		require.Contains(t, w.Body.String(), "failed to get completed claims for the L2 network")
 	})
 
 	t.Run("GetClaims for L2 network failed invalid network id", func(t *testing.T) {
