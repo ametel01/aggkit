@@ -13,6 +13,7 @@ import (
 	aggsendercfg "github.com/agglayer/aggkit/aggsender/config"
 	"github.com/agglayer/aggkit/aggsender/prover"
 	"github.com/agglayer/aggkit/bridgesync"
+	"github.com/agglayer/aggkit/claimsponsor"
 	"github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/l1infotreesync"
 	"github.com/agglayer/aggkit/lastgersync"
@@ -210,6 +211,9 @@ type Config struct {
 
 	// Configuration of the L1 Info Treee Sync service
 	L1InfoTreeSync l1infotreesync.Config
+
+	// ClaimSponsor is the config for the claim sponsor
+	ClaimSponsor claimsponsor.EVMClaimSponsorConfig
 
 	// BridgeL1Sync is the configuration for the synchronizer of the bridge of the L1
 	BridgeL1Sync bridgesync.Config

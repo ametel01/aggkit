@@ -71,13 +71,14 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Set default environment variables for sandbox mode
 ENV AGGKIT_SANDBOX_ENABLED=true \
+    AGGKIT_CLAIMSPONSOR_ENABLED=true \
     AGGKIT_LOG_LEVEL=info \
     AGGKIT_REST_PORT=5577 \
     AGGKIT_REST_HOST=0.0.0.0 \
     AGGKIT_RPC_PORT=8555 \
     AGGKIT_RPC_HOST=0.0.0.0 \
     AGGKIT_TELEMETRY_PORT=8080 \
-    AGGKIT_COMPONENTS=bridge,aggoracle \
+    AGGKIT_COMPONENTS=bridge,aggoracle,claim-sponsor \
     AGGKIT_DATABASE_DRIVER=sqlite3 \
     AGGKIT_DATABASE_NAME=/app/data/aggkit_sandbox.db
 

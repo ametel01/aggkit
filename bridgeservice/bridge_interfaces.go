@@ -2,8 +2,10 @@ package bridgeservice
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/agglayer/aggkit/bridgesync"
+	"github.com/agglayer/aggkit/claimsponsor"
 	"github.com/agglayer/aggkit/l1infotreesync"
 	"github.com/agglayer/aggkit/lastgersync"
 	tree "github.com/agglayer/aggkit/tree/types"
@@ -43,4 +45,9 @@ type L1InfoTreer interface {
 	GetFirstVerifiedBatches(rollupID uint32) (*l1infotreesync.VerifyBatches, error)
 	GetFirstVerifiedBatchesAfterBlock(rollupID uint32, blockNum uint64) (*l1infotreesync.VerifyBatches, error)
 	GetFirstL1InfoWithRollupExitRoot(rollupExitRoot common.Hash) (*l1infotreesync.L1InfoTreeLeaf, error)
+}
+
+type ClaimSponsorer interface {
+	AddClaimToQueue(claim *claimsponsor.Claim) error
+	GetClaim(globalIndex *big.Int) (*claimsponsor.Claim, error)
 }

@@ -11,13 +11,14 @@ echo "Starting AggKit in sandbox mode..."
 AGGKIT_CONFIG_PATH=${AGGKIT_CONFIG_PATH:-/tmp/aggkit-sandbox.toml}
 AGGKIT_SANDBOX_ENABLED=${AGGKIT_SANDBOX_ENABLED:-"true"}
 AGGKIT_LOG_LEVEL=${AGGKIT_LOG_LEVEL:-info}
-AGGKIT_COMPONENTS=${AGGKIT_COMPONENTS:-"bridge,aggoracle"}
+AGGKIT_COMPONENTS=${AGGKIT_COMPONENTS:-"bridge,aggoracle,claim-sponsor"}
+AGGKIT_CLAIMSPONSOR_ENABLED=${AGGKIT_CLAIMSPONSOR_ENABLED:-"true"}
 
-  # Network configuration
-  AGGKIT_L1_CHAIN_ID=${AGGKIT_L1_CHAIN_ID:-${CHAIN_ID_MAINNET:-"1"}}
-  AGGKIT_L2_CHAIN_ID=${AGGKIT_L2_CHAIN_ID:-${CHAIN_ID_AGGLAYER_1:-"1101"}}
-  AGGKIT_L1_URL=${AGGKIT_L1_URL:-"http://anvil-l1:8545"}
-  AGGKIT_L2_URL=${AGGKIT_L2_URL:-"http://anvil-l2:8545"}
+# Network configuration
+AGGKIT_L1_CHAIN_ID=${AGGKIT_L1_CHAIN_ID:-${CHAIN_ID_MAINNET:-"1"}}
+AGGKIT_L2_CHAIN_ID=${AGGKIT_L2_CHAIN_ID:-${CHAIN_ID_AGGLAYER_1:-"1101"}}
+AGGKIT_L1_URL=${AGGKIT_L1_URL:-"http://anvil-l1:8545"}
+AGGKIT_L2_URL=${AGGKIT_L2_URL:-"http://anvil-l2:8545"}
 
 # Service configuration
 AGGKIT_REST_HOST=${AGGKIT_REST_HOST:-"0.0.0.0"}
@@ -123,6 +124,44 @@ Host = "$AGGKIT_REST_HOST"
 ReadTimeout = "30s"
 WriteTimeout = "30s"
 MaxRequestsPerIPAndSecond = 1000
+
+[ClaimSponsor]
+DBPath = "/app/data/claimsponsor.sqlite"
+Enabled = $AGGKIT_CLAIMSPONSOR_ENABLED
+SenderAddr = "$AGGKIT_EVM_SENDER"
+BridgeAddrL2 = "$POLYGON_ZKEVM_BRIDGE_L2"
+MaxGas = 3000000
+RetryAfterErrorPeriod = "1s"
+MaxRetryAttemptsAfterError = -1
+WaitTxToBeMinedPeriod = "3s"
+WaitOnEmptyQueue = "3s"
+GasOffset = 0
+
+[ClaimSponsor.EthTxManager]
+FrequencyToMonitorTxs = "1s"
+WaitTxToBeMined = "2s"
+GetReceiptMaxTime = "250ms"
+GetReceiptWaitInterval = "1s"
+ForcedGas = 0
+GasPriceMarginFactor = 1
+MaxGasPriceLimit = 0
+StoragePath = "/app/data/ethtxmanager-claimsponsor.sqlite"
+ReadPendingL1Txs = false
+SafeStatusL1NumberOfBlocks = 5
+FinalizedStatusL1NumberOfBlocks = 10
+
+[ClaimSponsor.EthTxManager.PrivateKeys]
+Method = "local"
+Path = "/tmp/aggoracle.key"
+Password = "testonly"
+
+[ClaimSponsor.EthTxManager.Etherman]
+URL = "$AGGKIT_L2_URL"
+MultiGasProvider = false
+# L1ChainID = 0 indicates it will be set at runtime
+# This field should be populated with L2ChainID 
+L1ChainID = $AGGKIT_L2_CHAIN_ID
+HTTPHeaders = []
 
 [Database]
 Driver = "$AGGKIT_DATABASE_DRIVER"
