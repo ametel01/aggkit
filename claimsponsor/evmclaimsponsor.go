@@ -27,7 +27,24 @@ const (
 
 	gasTooHighErrTemplate = "Claim tx estimated to consume more gas than the maximum allowed by the service. " +
 		"Estimated %d, maximum allowed: %d"
+
+	// Network ID to Chain ID mappings
+	NETWORK_ID_MAINNET    = 0
+	NETWORK_ID_AGGLAYER_1 = 1
+	NETWORK_ID_AGGLAYER_2 = 2
+
+	CHAIN_ID_MAINNET    = 1
+	CHAIN_ID_AGGLAYER_1 = 1101
+	CHAIN_ID_AGGLAYER_2 = 137
 )
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 type EthClienter interface {
 	ethereum.GasEstimator
@@ -128,6 +145,7 @@ func (c *EVMClaimSponsor) checkClaim(ctx context.Context, claim *Claim) error {
 	if err != nil {
 		return err
 	}
+
 	gas, err := c.l2Client.EstimateGas(ctx, ethereum.CallMsg{
 		From: c.sender,
 		To:   &c.bridgeAddr,
@@ -136,6 +154,7 @@ func (c *EVMClaimSponsor) checkClaim(ctx context.Context, claim *Claim) error {
 	if err != nil {
 		return err
 	}
+
 	if gas > c.maxGas {
 		return fmt.Errorf(gasTooHighErrTemplate, gas, c.maxGas)
 	}
@@ -148,6 +167,7 @@ func (c *EVMClaimSponsor) sendClaim(ctx context.Context, claim *Claim) (string, 
 	if err != nil {
 		return "", err
 	}
+
 	id, err := c.ethTxManager.Add(ctx, &c.bridgeAddr, common.Big0, data, c.gasOffest, nil)
 	if err != nil {
 		return "", err
@@ -178,37 +198,70 @@ func (c *EVMClaimSponsor) claimStatus(ctx context.Context, id string) (ClaimStat
 	}
 }
 
+// networkIDToChainID converts network ID to chain ID as required by the smart contract
+func networkIDToChainID(networkID uint32) (uint32, error) {
+	switch networkID {
+	case NETWORK_ID_MAINNET:
+		return CHAIN_ID_MAINNET, nil
+	case NETWORK_ID_AGGLAYER_1:
+		return CHAIN_ID_AGGLAYER_1, nil
+	case NETWORK_ID_AGGLAYER_2:
+		return CHAIN_ID_AGGLAYER_2, nil
+	default:
+		return 0, fmt.Errorf("unsupported network ID: %d", networkID)
+	}
+}
+
 func (c *EVMClaimSponsor) buildClaimTxData(claim *Claim) ([]byte, error) {
+	// Convert network IDs to chain IDs as required by the smart contract
+	originChainID, err := networkIDToChainID(claim.OriginNetwork)
+	if err != nil {
+		return nil, fmt.Errorf("error converting origin network ID to chain ID: %w", err)
+	}
+
+	destinationChainID, err := networkIDToChainID(claim.DestinationNetwork)
+	if err != nil {
+		return nil, fmt.Errorf("error converting destination network ID to chain ID: %w", err)
+	}
+
+	var data []byte
+
 	switch claim.LeafType {
 	case LeafTypeAsset:
-		return c.bridgeABI.Pack(
+		data, err = c.bridgeABI.Pack(
 			"claimAsset",
 			claim.GlobalIndex,        // uint256 globalIndex
 			claim.MainnetExitRoot,    // bytes32 mainnetExitRoot
 			claim.RollupExitRoot,     // bytes32 rollupExitRoot
-			claim.OriginNetwork,      // uint32 originNetwork
+			originChainID,            // uint32 originNetwork (chain ID)
 			claim.OriginTokenAddress, // address originTokenAddress,
-			claim.DestinationNetwork, // uint32 destinationNetwork
+			destinationChainID,       // uint32 destinationNetwork (chain ID)
 			claim.DestinationAddress, // address destinationAddress
 			claim.Amount,             // uint256 amount
-			claim.Metadata,           // bytes metadata
+			[]byte(claim.Metadata),   // bytes metadata (convert HexBytes to []byte)
 		)
 	case LeafTypeMessage:
-		return c.bridgeABI.Pack(
+		data, err = c.bridgeABI.Pack(
 			"claimMessage",
 			claim.GlobalIndex,        // uint256 globalIndex
 			claim.MainnetExitRoot,    // bytes32 mainnetExitRoot
 			claim.RollupExitRoot,     // bytes32 rollupExitRoot
-			claim.OriginNetwork,      // uint32 originNetwork
+			originChainID,            // uint32 originNetwork (chain ID)
 			claim.OriginTokenAddress, // address originTokenAddress,
-			claim.DestinationNetwork, // uint32 destinationNetwork
+			destinationChainID,       // uint32 destinationNetwork (chain ID)
 			claim.DestinationAddress, // address destinationAddress
 			claim.Amount,             // uint256 amount
-			claim.Metadata,           // bytes metadata
+			[]byte(claim.Metadata),   // bytes metadata (convert HexBytes to []byte)
 		)
 	default:
 		return nil, fmt.Errorf("unexpected leaf type %d", claim.LeafType)
 	}
+
+	if err != nil {
+		return nil, fmt.Errorf("error packing calldata: %w", err)
+	}
+
+	return data, nil
 }
 
 //go:embed polygonzkevmbridgev2_noproof.abi.json
