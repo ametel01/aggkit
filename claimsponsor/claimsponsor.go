@@ -3,9 +3,13 @@ package claimsponsor
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/agglayer/aggkit/claimsponsor/migrations"
@@ -25,6 +29,66 @@ const (
 	FailedClaimStatus  ClaimStatus = "failed"
 )
 
+// HexBytes handles hex string unmarshaling correctly
+type HexBytes []byte
+
+// UnmarshalJSON correctly handles hex strings from JSON
+func (h *HexBytes) UnmarshalJSON(data []byte) error {
+	// Remove quotes from JSON string
+	var hexStr string
+	if err := json.Unmarshal(data, &hexStr); err != nil {
+		return err
+	}
+
+	// Remove "0x" prefix if present
+	hexStr = strings.TrimPrefix(hexStr, "0x")
+
+	// Decode hex string to bytes
+	decoded, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return fmt.Errorf("invalid hex string: %w", err)
+	}
+
+	*h = decoded
+	return nil
+}
+
+// MarshalJSON encodes bytes as hex string for JSON
+func (h HexBytes) MarshalJSON() ([]byte, error) {
+	return json.Marshal(hex.EncodeToString(h))
+}
+
+// Scan implements the sql.Scanner interface for database scanning
+func (h *HexBytes) Scan(value interface{}) error {
+	if value == nil {
+		*h = nil
+		return nil
+	}
+	switch v := value.(type) {
+	case []byte:
+		*h = make(HexBytes, len(v))
+		copy(*h, v)
+		return nil
+	case string:
+		decoded, err := hex.DecodeString(strings.TrimPrefix(v, "0x"))
+		if err != nil {
+			return err
+		}
+		*h = decoded
+		return nil
+	default:
+		return fmt.Errorf("cannot scan %T into HexBytes", value)
+	}
+}
+
+// Value implements the driver.Valuer interface for database storage
+func (h HexBytes) Value() (driver.Value, error) {
+	if h == nil {
+		return nil, nil
+	}
+	return []byte(h), nil
+}
+
 var (
 	ErrInvalidClaim     = errors.New("invalid claim")
 	ErrClaimDoesntExist = errors.New("the claim requested to be updated does not exist")
@@ -41,7 +105,7 @@ type Claim struct {
 	DestinationNetwork uint32         `meddler:"destination_network"`
 	DestinationAddress common.Address `meddler:"destination_address,address"`
 	Amount             *big.Int       `meddler:"amount,bigint"`
-	Metadata           []byte         `meddler:"metadata"`
+	Metadata           HexBytes       `meddler:"metadata"`
 	Status             ClaimStatus    `meddler:"status"`
 	TxID               string         `meddler:"tx_id"`
 }
@@ -172,6 +236,7 @@ func (c *ClaimSponsor) getFirstPendingClaim() (*Claim, error) {
 		`SELECT * FROM claim WHERE status = $1 ORDER BY rowid ASC LIMIT 1;`,
 		PendingClaimStatus,
 	)
+
 	return claim, db.ReturnErrNotFound(err)
 }
 
