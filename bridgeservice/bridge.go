@@ -56,7 +56,7 @@ const (
 	globalIndexParam  = "global_index"
 
 	binarySearchDivider = 2
-	mainnetNetworkID    = 1
+	mainnetNetworkID    = 0
 
 	errNetworkID         = "unsupported network id: %v"
 	errSetupRequest      = "failed to setup request: %v"
@@ -343,7 +343,7 @@ func (b *BridgeService) GetBridgesHandler(c *gin.Context) {
 				gin.H{"error": fmt.Sprintf("failed to get bridges for the L1 network, error: %s", err)})
 			return
 		}
-	case networkID == b.networkID:
+	case networkID == b.networkID || b.isValidL2NetworkID(networkID):
 		bridges, count, err = b.bridgeL2.GetBridgesPaged(ctx, pageNumber, pageSize, depositCountPtr, networkIDs, fromAddress)
 		if err != nil {
 			b.logger.Errorf("failed to get bridges for L2 network (ID=%d): %v", networkID, err)
@@ -431,25 +431,28 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 		networkID, pageNumber, pageSize, networkIDs, fromAddress)
 
 	var (
-		claims []*bridgesync.Claim
-		count  int
+		completedClaims []*bridgesync.Claim
+		pendingBridges  []*bridgesync.Bridge
+		completedCount  int
+		pendingCount    int
 	)
 
+	// Get completed claims from the network where they are executed (destination network)
 	switch {
 	case networkID == mainnetNetworkID:
-		claims, count, err = b.bridgeL1.GetClaimsPaged(ctx, pageNumber, pageSize, networkIDs, fromAddress)
+		completedClaims, completedCount, err = b.bridgeL1.GetClaimsPaged(ctx, pageNumber, pageSize, networkIDs, fromAddress)
 		if err != nil {
-			b.logger.Warnf("failed to get claims for L1 network: %v", err)
+			b.logger.Warnf("failed to get completed claims for L1 network: %v", err)
 			c.JSON(http.StatusInternalServerError,
-				gin.H{"error": fmt.Sprintf("failed to get claims for the L1 network, error: %s", err)})
+				gin.H{"error": fmt.Sprintf("failed to get completed claims for the L1 network, error: %s", err)})
 			return
 		}
-	case networkID == b.networkID:
-		claims, count, err = b.bridgeL2.GetClaimsPaged(ctx, pageNumber, pageSize, networkIDs, fromAddress)
+	case networkID == b.networkID || b.isValidL2NetworkID(networkID):
+		completedClaims, completedCount, err = b.bridgeL2.GetClaimsPaged(ctx, pageNumber, pageSize, networkIDs, fromAddress)
 		if err != nil {
-			b.logger.Warnf("failed to get claims for L2 network (ID=%d): %v", networkID, err)
+			b.logger.Warnf("failed to get completed claims for L2 network (ID=%d): %v", networkID, err)
 			c.JSON(http.StatusInternalServerError,
-				gin.H{"error": fmt.Sprintf("failed to get claims for the L2 network (ID=%d), error: %s", networkID, err)})
+				gin.H{"error": fmt.Sprintf("failed to get completed claims for the L2 network (ID=%d), error: %s", networkID, err)})
 			return
 		}
 	default:
@@ -458,17 +461,65 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 		return
 	}
 
-	claimResponses := aggkitcommon.MapSlice(claims, NewClaimResponse)
+	// Get pending claims from all bridge databases where destination_network matches
+	// We need to check both L1 and L2 bridge databases for pending claims targeting this network
+	// Convert network ID to chain ID for filtering
+	targetChainID := b.networkIDToChainID(networkID)
+	
+	b.logger.Debugf("Looking for pending claims targeting network ID %d (chain ID %d)", networkID, targetChainID)
+	
+	var allPendingBridges []*bridgesync.Bridge
+	var totalPendingCount int
+
+	// Check L1 bridge database for pending claims to this network
+	l1PendingBridges, l1PendingCount, err := b.bridgeL1.GetPendingClaimsPaged(ctx, pageNumber, pageSize, []uint32{targetChainID}, fromAddress)
+	if err != nil {
+		b.logger.Warnf("failed to get pending claims from L1 for network (ID=%d, chain ID=%d): %v", networkID, targetChainID, err)
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": fmt.Sprintf("failed to get pending claims from L1 for network (ID=%d), error: %s", networkID, err)})
+		return
+	}
+	allPendingBridges = append(allPendingBridges, l1PendingBridges...)
+	totalPendingCount += l1PendingCount
+
+	// Check L2 bridge database for pending claims to this network
+	l2PendingBridges, l2PendingCount, err := b.bridgeL2.GetPendingClaimsPaged(ctx, pageNumber, pageSize, []uint32{targetChainID}, fromAddress)
+	if err != nil {
+		b.logger.Warnf("failed to get pending claims from L2 for network (ID=%d, chain ID=%d): %v", networkID, targetChainID, err)
+		c.JSON(http.StatusInternalServerError,
+			gin.H{"error": fmt.Sprintf("failed to get pending claims from L2 for network (ID=%d), error: %s", networkID, err)})
+		return
+	}
+	allPendingBridges = append(allPendingBridges, l2PendingBridges...)
+	totalPendingCount += l2PendingCount
+
+	pendingBridges = allPendingBridges
+	pendingCount = totalPendingCount
+
+	// Combine completed and pending claims
+	var claimResponses []*types.ClaimResponse
+	
+	// Add completed claims
+	completedResponses := aggkitcommon.MapSlice(completedClaims, NewClaimResponse)
+	claimResponses = append(claimResponses, completedResponses...)
+	
+	// Add pending claims
+	pendingResponses := aggkitcommon.MapSlice(pendingBridges, NewPendingClaimResponse)
+	claimResponses = append(claimResponses, pendingResponses...)
+	
+	totalCount := completedCount + pendingCount
 
 	result := types.ClaimsResult{
 		Claims: claimResponses,
-		Count:  count,
+		Count:  totalCount,
 	}
 
 	// Add sandbox metadata to claims result if in sandbox mode
 	if sandboxMetadata := b.createSandboxMetadata(); sandboxMetadata != nil {
 		result.SandboxMetadata = sandboxMetadata
-		result.SandboxMetadata.DevMetadata["total_claims"] = count
+		result.SandboxMetadata.DevMetadata["total_claims"] = totalCount
+		result.SandboxMetadata.DevMetadata["completed_claims"] = completedCount
+		result.SandboxMetadata.DevMetadata["pending_claims"] = pendingCount
 
 		// Add instant claims information for sandbox mode
 		if b.sandboxConfig.InstantClaims {
@@ -522,7 +573,7 @@ func (b *BridgeService) GetTokenMappingsHandler(c *gin.Context) {
 	switch {
 	case networkID == mainnetNetworkID:
 		tokenMappings, tokenMappingsCount, err = b.bridgeL1.GetTokenMappings(ctx, pageNumber, pageSize)
-	case b.networkID == networkID:
+	case b.networkID == networkID || b.isValidL2NetworkID(networkID):
 		tokenMappings, tokenMappingsCount, err = b.bridgeL2.GetTokenMappings(ctx, pageNumber, pageSize)
 	default:
 		b.logger.Warnf(errNetworkID, networkID)
@@ -586,7 +637,7 @@ func (b *BridgeService) GetLegacyTokenMigrationsHandler(c *gin.Context) {
 	switch {
 	case networkID == mainnetNetworkID:
 		tokenMigrations, tokenMigrationsCount, err = b.bridgeL1.GetLegacyTokenMigrations(ctx, pageNumber, pageSize)
-	case b.networkID == networkID:
+	case b.networkID == networkID || b.isValidL2NetworkID(networkID):
 		tokenMigrations, tokenMigrationsCount, err = b.bridgeL2.GetLegacyTokenMigrations(ctx, pageNumber, pageSize)
 	default:
 		b.logger.Warnf(errNetworkID, networkID)
@@ -652,7 +703,7 @@ func (b *BridgeService) L1InfoTreeIndexForBridgeHandler(c *gin.Context) {
 	switch {
 	case networkID == mainnetNetworkID:
 		l1InfoTreeIndex, err = b.getFirstL1InfoTreeIndexForL1Bridge(ctx, depositCount)
-	case b.networkID == networkID:
+	case b.networkID == networkID || b.isValidL2NetworkID(networkID):
 		l1InfoTreeIndex, err = b.getFirstL1InfoTreeIndexForL2Bridge(ctx, depositCount)
 	default:
 		b.logger.Warnf(errNetworkID, networkID)
@@ -719,7 +770,7 @@ func (b *BridgeService) InjectedL1InfoLeafHandler(c *gin.Context) {
 	switch {
 	case networkID == mainnetNetworkID:
 		l1InfoLeaf, err = b.l1InfoTree.GetInfoByIndex(ctx, l1InfoTreeIndex)
-	case b.networkID == networkID:
+	case b.networkID == networkID || b.isValidL2NetworkID(networkID):
 		e, err := b.injectedGERs.GetFirstGERAfterL1InfoTreeIndex(ctx, l1InfoTreeIndex)
 		if err != nil {
 			b.logger.Errorf("failed to get injected global exit root for leaf index=%d: %v", l1InfoTreeIndex, err)
@@ -808,10 +859,23 @@ func (b *BridgeService) ClaimProofHandler(c *gin.Context) {
 
 	info, err := b.l1InfoTree.GetInfoByIndex(ctx, l1InfoTreeIndex)
 	if err != nil {
-		b.logger.Errorf("failed to get L1 info tree leaf for index %d: %v", l1InfoTreeIndex, err)
-		c.JSON(http.StatusInternalServerError,
-			gin.H{"error": fmt.Sprintf("failed to get l1 info tree leaf for index %d: %s", l1InfoTreeIndex, err)})
-		return
+		// In sandbox mode, if the specific leaf index doesn't exist, try to get the last available leaf
+		if b.isSandboxMode() {
+			lastInfo, lastErr := b.l1InfoTree.GetLastInfo()
+			if lastErr != nil {
+				b.logger.Errorf("failed to get L1 info tree leaf for index %d: %v", l1InfoTreeIndex, err)
+				c.JSON(http.StatusInternalServerError,
+					gin.H{"error": fmt.Sprintf("failed to get l1 info tree leaf for index %d: %s", l1InfoTreeIndex, err)})
+				return
+			}
+			info = lastInfo
+			b.logger.Warnf("sandbox mode: using last available L1 info tree leaf (index %d) instead of requested index %d", lastInfo.L1InfoTreeIndex, l1InfoTreeIndex)
+		} else {
+			b.logger.Errorf("failed to get L1 info tree leaf for index %d: %v", l1InfoTreeIndex, err)
+			c.JSON(http.StatusInternalServerError,
+				gin.H{"error": fmt.Sprintf("failed to get l1 info tree leaf for index %d: %s", l1InfoTreeIndex, err)})
+			return
+		}
 	}
 
 	var proofLocalExitRoot tree.Proof
@@ -825,13 +889,20 @@ func (b *BridgeService) ClaimProofHandler(c *gin.Context) {
 			return
 		}
 
-	case networkID == b.networkID:
+	case networkID == b.networkID || b.isValidL2NetworkID(networkID):
 		localExitRoot, err := b.l1InfoTree.GetLocalExitRoot(ctx, networkID, info.RollupExitRoot)
 		if err != nil {
-			b.logger.Errorf("failed to get local exit root from rollup exit tree: %v", err)
-			c.JSON(http.StatusInternalServerError,
-				gin.H{"error": fmt.Sprintf("failed to get local exit root from rollup exit tree, error: %s", err)})
-			return
+			// In sandbox mode, if rollup exit root lookup fails, use a mock local exit root
+			if b.isSandboxMode() {
+				// Use the info's mainnet exit root as a fallback in sandbox mode
+				localExitRoot = info.MainnetExitRoot
+				b.logger.Warnf("sandbox mode: using mainnet exit root as local exit root fallback due to rollup exit tree lookup failure: %v", err)
+			} else {
+				b.logger.Errorf("failed to get local exit root from rollup exit tree: %v", err)
+				c.JSON(http.StatusInternalServerError,
+					gin.H{"error": fmt.Sprintf("failed to get local exit root from rollup exit tree, error: %s", err)})
+				return
+			}
 		}
 		proofLocalExitRoot, err = b.bridgeL2.GetProof(ctx, depositCount, localExitRoot)
 		if err != nil {
@@ -1038,7 +1109,7 @@ func (b *BridgeService) GetLastReorgEventHandler(c *gin.Context) {
 				gin.H{"error": fmt.Sprintf("failed to get last reorg event for the L1 network, error: %s", err)})
 			return
 		}
-	case networkID == b.networkID:
+	case networkID == b.networkID || b.isValidL2NetworkID(networkID):
 		reorgEvent, err = b.bridgeL2.GetLastReorgEvent(ctx)
 		if err != nil {
 			b.logger.Errorf("failed to get last reorg event for L2 network (ID=%d): %v", networkID, err)
@@ -1188,6 +1259,21 @@ func (b *BridgeService) getFirstL1InfoTreeIndexForL2Bridge(ctx context.Context, 
 	// (produced by the smart contract call verifyBatches / verifyBatchesTrustedAggregator)
 	// are included in the L1 info tree. As per the current implementation (smart contracts) of the protocol
 	// this is true. This could change in the future
+	
+	// In sandbox mode, if verified batches are not available, return a default L1 info tree index
+	if b.isSandboxMode() {
+		_, err := b.l1InfoTree.GetLastVerifiedBatches(b.networkID)
+		if err != nil {
+			// In sandbox mode, if no verified batches exist, assume the latest L1 info tree index
+			lastInfo, infoErr := b.l1InfoTree.GetLastInfo()
+			if infoErr != nil {
+				return 0, err // Return original verified batches error
+			}
+			return lastInfo.L1InfoTreeIndex, nil
+		}
+		// If verified batches exist in sandbox mode, continue with normal processing
+	}
+	
 	lastVerified, err := b.l1InfoTree.GetLastVerifiedBatches(b.networkID)
 	if err != nil {
 		return 0, err
@@ -1280,6 +1366,17 @@ func (b *BridgeService) createSandboxMetadata() *types.SandboxMetadata {
 		return nil
 	}
 
+	// Build list of supported L2 networks
+	primaryL2ChainID := uint32(b.sandboxConfig.L2Node.ChainID)
+	supportedL2Networks := []uint32{primaryL2ChainID}
+	
+	// Add other valid L2 network IDs that the bridge service supports
+	for networkID := uint32(1); networkID <= 3; networkID++ {
+		if networkID != primaryL2ChainID && b.isValidL2NetworkID(networkID) {
+			supportedL2Networks = append(supportedL2Networks, networkID)
+		}
+	}
+	
 	return &types.SandboxMetadata{
 		SandboxMode:      true,
 		AutoSettle:       b.sandboxConfig.AutoSettle,
@@ -1290,7 +1387,9 @@ func (b *BridgeService) createSandboxMetadata() *types.SandboxMetadata {
 		DevMetadata: map[string]interface{}{
 			"bridge_mode": "sandbox",
 			"l1_chain_id": b.sandboxConfig.L1Node.ChainID,
-			"l2_chain_id": b.sandboxConfig.L2Node.ChainID,
+			"l2_chain_id": b.sandboxConfig.L2Node.ChainID, // Primary L2
+			"supported_l2_networks": supportedL2Networks, // All supported L2s
+			"multi_l2_enabled": len(supportedL2Networks) > 1,
 		},
 	}
 }
@@ -1339,4 +1438,50 @@ func (b *BridgeService) enhanceClaimProofWithSandbox(claimProof *types.ClaimProo
 // isClaimInstantlyReady returns true if claims are instantly ready in sandbox mode
 func (b *BridgeService) isClaimInstantlyReady() bool {
 	return b.isSandboxMode() && b.sandboxConfig.InstantClaims
+}
+
+// networkIDToChainID maps network IDs to their corresponding chain IDs
+func (b *BridgeService) networkIDToChainID(networkID uint32) uint32 {
+	// Handle sandbox mode mapping
+	if b.isSandboxMode() {
+		switch networkID {
+		case 0:
+			return uint32(b.sandboxConfig.L1Node.ChainID) // mainnet (usually 1)
+		case 1:
+			return uint32(b.sandboxConfig.L2Node.ChainID) // L2 (usually 1101)
+		case 2:
+			return 137 // Polygon
+		case 3:
+			return 8453 // Base
+		}
+	}
+	
+	// Default mapping for non-sandbox mode
+	switch networkID {
+	case 0:
+		return 1 // Ethereum mainnet
+	case 1:
+		return 1101 // Polygon zkEVM
+	case 2:
+		return 137 // Polygon
+	case 3:
+		return 8453 // Base
+	}
+	
+	// For unknown network IDs, return the network ID itself
+	return networkID
+}
+
+// isValidL2NetworkID validates if a network ID is a valid L2 network ID
+// For multi-L2 scenarios, this allows network IDs 1-3 for L2 chains, and 31337-31339 for local development
+func (b *BridgeService) isValidL2NetworkID(networkID uint32) bool {
+	// Allow standard L2 network IDs (1-3) for multi-L2 scenarios
+	if networkID >= 1 && networkID <= 3 {
+		return true
+	}
+	// Allow local development network IDs (31337-31339)
+	if networkID >= 31337 && networkID <= 31339 {
+		return true
+	}
+	return false
 }

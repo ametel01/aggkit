@@ -115,6 +115,11 @@ func NewBridgeResponse(bridge *bridgesync.Bridge) *bridgetypes.BridgeResponse {
 
 // NewClaimResponse creates ClaimResponse instance out of the provided Claim
 func NewClaimResponse(claim *bridgesync.Claim) *bridgetypes.ClaimResponse {
+	claimType := "asset"
+	if claim.IsMessage {
+		claimType = "message"
+	}
+
 	return &bridgetypes.ClaimResponse{
 		GlobalIndex:        bridgetypes.BigIntString(claim.GlobalIndex.String()),
 		DestinationNetwork: claim.DestinationNetwork,
@@ -127,6 +132,42 @@ func NewClaimResponse(claim *bridgesync.Claim) *bridgetypes.ClaimResponse {
 		OriginNetwork:      claim.OriginNetwork,
 		BlockTimestamp:     claim.BlockTimestamp,
 		MainnetExitRoot:    bridgetypes.Hash(claim.MainnetExitRoot.Hex()),
+		Status:             "completed",
+		Type:               claimType,
+	}
+}
+
+// NewPendingClaimResponse creates ClaimResponse instance for a pending claim from a Bridge event
+func NewPendingClaimResponse(bridge *bridgesync.Bridge) *bridgetypes.ClaimResponse {
+	claimType := "asset"
+	if bridge.LeafType == 1 {
+		claimType = "message"
+	}
+
+	// For pending claims, we need to calculate the global index
+	// Global index = OriginNetwork + DepositCount (encoded as per bridge protocol)
+	// If origin network is 0 (mainnet), mainnetFlag = true, otherwise use origin network as rollup index
+	mainnetFlag := bridge.OriginNetwork == 0
+	rollupIndex := bridge.OriginNetwork
+	if mainnetFlag {
+		rollupIndex = 0
+	}
+	globalIndex := bridgesync.GenerateGlobalIndex(mainnetFlag, rollupIndex, bridge.DepositCount)
+
+	return &bridgetypes.ClaimResponse{
+		GlobalIndex:        bridgetypes.BigIntString(globalIndex.String()),
+		DestinationNetwork: bridge.DestinationNetwork,
+		TxHash:             bridgetypes.Hash(bridge.TxHash.Hex()),
+		Amount:             bridgetypes.BigIntString(bridge.Amount.String()),
+		BlockNum:           bridge.BlockNum,
+		FromAddress:        bridgetypes.Address(bridge.FromAddress.Hex()),
+		DestinationAddress: bridgetypes.Address(bridge.DestinationAddress.Hex()),
+		OriginAddress:      bridgetypes.Address(bridge.OriginAddress.Hex()),
+		OriginNetwork:      bridge.OriginNetwork,
+		BlockTimestamp:     bridge.BlockTimestamp,
+		MainnetExitRoot:    bridgetypes.Hash("0x0000000000000000000000000000000000000000000000000000000000000000"), // Empty for pending
+		Status:             "pending",
+		Type:               claimType,
 	}
 }
 

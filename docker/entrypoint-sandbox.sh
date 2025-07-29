@@ -84,7 +84,7 @@ MaxRequestsPerIPAndSecond = 1000
 
 # Primary Network Configuration (L2)
 [Common]
-NetworkID = $AGGKIT_L2_CHAIN_ID
+NetworkID = 1
 
 [Common.L1RPC]
 URL = "$AGGKIT_L1_URL"
@@ -177,14 +177,14 @@ MaxConns = 0
 
 # L1 Network Configuration (Mainnet)
 [Networks.L1]
-NetworkID = $AGGKIT_L1_CHAIN_ID
+NetworkID = 0
 Name = "L1 Mainnet"
 URL = "$AGGKIT_L1_URL"
 ChainID = $AGGKIT_L1_CHAIN_ID
 
 # L2 Network Configuration
 [Networks.L2] 
-NetworkID = $AGGKIT_L2_CHAIN_ID
+NetworkID = 1
 Name = "L2 AggLayer"
 URL = "$AGGKIT_L2_URL"
 ChainID = $AGGKIT_L2_CHAIN_ID
@@ -314,15 +314,15 @@ RequireStorageContentCompatibility = false
 
 # Bridge Service Network Support
 [BridgeService]
-SupportedNetworks = [1, 1101]
+SupportedNetworks = [0, 1]
 
-[BridgeService.Networks.1]
+[BridgeService.Networks.0]
 Name = "L1 Mainnet"
 ChainID = $AGGKIT_L1_CHAIN_ID
 BridgeAddr = "$POLYGON_ZKEVM_BRIDGE_L1"
 URL = "$AGGKIT_L1_URL"
 
-[BridgeService.Networks.1101]
+[BridgeService.Networks.1]
 Name = "L2 AggLayer"
 ChainID = $AGGKIT_L2_CHAIN_ID
 BridgeAddr = "$POLYGON_ZKEVM_BRIDGE_L2"

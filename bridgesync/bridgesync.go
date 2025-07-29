@@ -189,7 +189,7 @@ func newBridgeSync(
 		RetryAfterErrorPeriod:      retryAfterErrorPeriod,
 	}
 
-	appender, err := buildAppender(ethClient, bridge, syncFullClaims, bridgeContractV2, logger)
+	appender, err := buildAppender(ethClient, bridge, syncFullClaims, bridgeContractV2, logger, syncerID)
 	if err != nil {
 		return nil, err
 	}
@@ -257,6 +257,16 @@ func (s *BridgeSync) GetClaimsPaged(
 		return nil, 0, sync.ErrInconsistentState
 	}
 	return s.processor.GetClaimsPaged(ctx, page, pageSize, networkIDs, fromAddress)
+}
+
+func (s *BridgeSync) GetPendingClaimsPaged(
+	ctx context.Context,
+	page, pageSize uint32, networkIDs []uint32, fromAddress string) ([]*Bridge, int, error) {
+	if s.processor.isHalted() {
+		s.processor.log.Error("processor is halted, cannot get pending claims")
+		return nil, 0, sync.ErrInconsistentState
+	}
+	return s.processor.GetPendingClaimsPaged(ctx, page, pageSize, networkIDs, fromAddress)
 }
 
 // Start starts the synchronization process

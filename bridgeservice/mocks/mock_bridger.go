@@ -165,6 +165,75 @@ func (_c *Bridger_GetClaimsPaged_Call) RunAndReturn(run func(context.Context, ui
 	return _c
 }
 
+// GetPendingClaimsPaged provides a mock function with given fields: ctx, page, pageSize, networkIDs, fromAddress
+func (_m *Bridger) GetPendingClaimsPaged(ctx context.Context, page uint32, pageSize uint32, networkIDs []uint32, fromAddress string) ([]*bridgesync.Bridge, int, error) {
+	ret := _m.Called(ctx, page, pageSize, networkIDs, fromAddress)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPendingClaimsPaged")
+	}
+
+	var r0 []*bridgesync.Bridge
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint32, uint32, []uint32, string) ([]*bridgesync.Bridge, int, error)); ok {
+		return rf(ctx, page, pageSize, networkIDs, fromAddress)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uint32, uint32, []uint32, string) []*bridgesync.Bridge); ok {
+		r0 = rf(ctx, page, pageSize, networkIDs, fromAddress)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*bridgesync.Bridge)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uint32, uint32, []uint32, string) int); ok {
+		r1 = rf(ctx, page, pageSize, networkIDs, fromAddress)
+	} else {
+		r1 = ret.Get(1).(int)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, uint32, uint32, []uint32, string) error); ok {
+		r2 = rf(ctx, page, pageSize, networkIDs, fromAddress)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// Bridger_GetPendingClaimsPaged_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPendingClaimsPaged'
+type Bridger_GetPendingClaimsPaged_Call struct {
+	*mock.Call
+}
+
+// GetPendingClaimsPaged is a helper method to define mock.On call
+//   - ctx context.Context
+//   - page uint32
+//   - pageSize uint32
+//   - networkIDs []uint32
+//   - fromAddress string
+func (_e *Bridger_Expecter) GetPendingClaimsPaged(ctx interface{}, page interface{}, pageSize interface{}, networkIDs interface{}, fromAddress interface{}) *Bridger_GetPendingClaimsPaged_Call {
+	return &Bridger_GetPendingClaimsPaged_Call{Call: _e.mock.On("GetPendingClaimsPaged", ctx, page, pageSize, networkIDs, fromAddress)}
+}
+
+func (_c *Bridger_GetPendingClaimsPaged_Call) Run(run func(ctx context.Context, page uint32, pageSize uint32, networkIDs []uint32, fromAddress string)) *Bridger_GetPendingClaimsPaged_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uint32), args[2].(uint32), args[3].([]uint32), args[4].(string))
+	})
+	return _c
+}
+
+func (_c *Bridger_GetPendingClaimsPaged_Call) Return(_a0 []*bridgesync.Bridge, _a1 int, _a2 error) *Bridger_GetPendingClaimsPaged_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *Bridger_GetPendingClaimsPaged_Call) RunAndReturn(run func(context.Context, uint32, uint32, []uint32, string) ([]*bridgesync.Bridge, int, error)) *Bridger_GetPendingClaimsPaged_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetContractDepositCount provides a mock function with given fields: ctx
 func (_m *Bridger) GetContractDepositCount(ctx context.Context) (uint32, error) {
 	ret := _m.Called(ctx)
