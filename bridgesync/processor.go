@@ -531,16 +531,20 @@ func (p *processor) GetPendingClaimsPaged(
 	
 	// For pending claims, we need bridges that don't have corresponding claims
 	// Use a LEFT JOIN to find bridges without claims
+	// NOTE: This simplified global index calculation must match the GenerateGlobalIndex function
 	query := fmt.Sprintf(`
 		SELECT COUNT(DISTINCT b.deposit_count) 
 		FROM %s b
 		LEFT JOIN %s c ON (
+			-- Use the same global index calculation as GenerateGlobalIndex function
+			-- For mainnet (origin_network = 0): start with 1 byte (value 1) + 4 zero bytes + 4 bytes for deposit_count
+			-- For L2: start with 4 bytes for origin_network + 4 bytes for deposit_count
 			CASE 
 				WHEN b.origin_network = 0 THEN 
-					-- Mainnet: global_index = (1 << 64) + deposit_count
-					c.global_index = (1 << 64) + b.deposit_count
+					-- Mainnet: (1 << 64) + deposit_count = 18446744073709551616 + deposit_count
+					c.global_index = 18446744073709551616 + b.deposit_count
 				ELSE 
-					-- L2: global_index = (origin_network << 32) + deposit_count  
+					-- L2: (origin_network << 32) + deposit_count  
 					c.global_index = (CAST(b.origin_network AS BIGINT) << 32) + b.deposit_count
 			END
 		)
@@ -569,10 +573,13 @@ func (p *processor) GetPendingClaimsPaged(
 		SELECT b.* 
 		FROM %s b
 		LEFT JOIN %s c ON (
+			-- Use the same global index calculation as GenerateGlobalIndex function
 			CASE 
 				WHEN b.origin_network = 0 THEN 
-					c.global_index = (1 << 64) + b.deposit_count
+					-- Mainnet: (1 << 64) + deposit_count = 18446744073709551616 + deposit_count
+					c.global_index = 18446744073709551616 + b.deposit_count
 				ELSE 
+					-- L2: (origin_network << 32) + deposit_count  
 					c.global_index = (CAST(b.origin_network AS BIGINT) << 32) + b.deposit_count
 			END
 		)
