@@ -463,18 +463,17 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 
 	// Get pending claims from all bridge databases where destination_network matches
 	// We need to check both L1 and L2 bridge databases for pending claims targeting this network
-	// Convert network ID to chain ID for filtering
-	targetChainID := b.networkIDToChainID(networkID)
+	// Use network ID directly as requested
 	
-	b.logger.Debugf("Looking for pending claims targeting network ID %d (chain ID %d)", networkID, targetChainID)
+	b.logger.Debugf("Looking for pending claims targeting network ID %d", networkID)
 	
 	var allPendingBridges []*bridgesync.Bridge
 	var totalPendingCount int
 
 	// Check L1 bridge database for pending claims to this network
-	l1PendingBridges, l1PendingCount, err := b.bridgeL1.GetPendingClaimsPaged(ctx, pageNumber, pageSize, []uint32{targetChainID}, fromAddress)
+	l1PendingBridges, l1PendingCount, err := b.bridgeL1.GetPendingClaimsPaged(ctx, pageNumber, pageSize, []uint32{networkID}, fromAddress)
 	if err != nil {
-		b.logger.Warnf("failed to get pending claims from L1 for network (ID=%d, chain ID=%d): %v", networkID, targetChainID, err)
+		b.logger.Warnf("failed to get pending claims from L1 for network ID %d: %v", networkID, err)
 		c.JSON(http.StatusInternalServerError,
 			gin.H{"error": fmt.Sprintf("failed to get pending claims from L1 for network (ID=%d), error: %s", networkID, err)})
 		return
@@ -483,9 +482,9 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 	totalPendingCount += l1PendingCount
 
 	// Check L2 bridge database for pending claims to this network
-	l2PendingBridges, l2PendingCount, err := b.bridgeL2.GetPendingClaimsPaged(ctx, pageNumber, pageSize, []uint32{targetChainID}, fromAddress)
+	l2PendingBridges, l2PendingCount, err := b.bridgeL2.GetPendingClaimsPaged(ctx, pageNumber, pageSize, []uint32{networkID}, fromAddress)
 	if err != nil {
-		b.logger.Warnf("failed to get pending claims from L2 for network (ID=%d, chain ID=%d): %v", networkID, targetChainID, err)
+		b.logger.Warnf("failed to get pending claims from L2 for network ID %d: %v", networkID, err)
 		c.JSON(http.StatusInternalServerError,
 			gin.H{"error": fmt.Sprintf("failed to get pending claims from L2 for network (ID=%d), error: %s", networkID, err)})
 		return
@@ -1440,37 +1439,7 @@ func (b *BridgeService) isClaimInstantlyReady() bool {
 	return b.isSandboxMode() && b.sandboxConfig.InstantClaims
 }
 
-// networkIDToChainID maps network IDs to their corresponding chain IDs
-func (b *BridgeService) networkIDToChainID(networkID uint32) uint32 {
-	// Handle sandbox mode mapping
-	if b.isSandboxMode() {
-		switch networkID {
-		case 0:
-			return uint32(b.sandboxConfig.L1Node.ChainID) // mainnet (usually 1)
-		case 1:
-			return uint32(b.sandboxConfig.L2Node.ChainID) // L2 (usually 1101)
-		case 2:
-			return 137 // Polygon
-		case 3:
-			return 8453 // Base
-		}
-	}
-	
-	// Default mapping for non-sandbox mode
-	switch networkID {
-	case 0:
-		return 1 // Ethereum mainnet
-	case 1:
-		return 1101 // Polygon zkEVM
-	case 2:
-		return 137 // Polygon
-	case 3:
-		return 8453 // Base
-	}
-	
-	// For unknown network IDs, return the network ID itself
-	return networkID
-}
+
 
 // isValidL2NetworkID validates if a network ID is a valid L2 network ID
 // For multi-L2 scenarios, this allows network IDs 1-3 for L2 chains, and 31337-31339 for local development

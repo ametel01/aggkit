@@ -28,14 +28,10 @@ const (
 	gasTooHighErrTemplate = "Claim tx estimated to consume more gas than the maximum allowed by the service. " +
 		"Estimated %d, maximum allowed: %d"
 
-	// Network ID to Chain ID mappings
+	// Network IDs - now used directly without chain ID mapping
 	NETWORK_ID_MAINNET    = 0
 	NETWORK_ID_AGGLAYER_1 = 1
 	NETWORK_ID_AGGLAYER_2 = 2
-
-	CHAIN_ID_MAINNET    = 1
-	CHAIN_ID_AGGLAYER_1 = 1101
-	CHAIN_ID_AGGLAYER_2 = 137
 )
 
 // min returns the minimum of two integers
@@ -198,33 +194,13 @@ func (c *EVMClaimSponsor) claimStatus(ctx context.Context, id string) (ClaimStat
 	}
 }
 
-// networkIDToChainID converts network ID to chain ID as required by the smart contract
-func networkIDToChainID(networkID uint32) (uint32, error) {
-	switch networkID {
-	case NETWORK_ID_MAINNET:
-		return CHAIN_ID_MAINNET, nil
-	case NETWORK_ID_AGGLAYER_1:
-		return CHAIN_ID_AGGLAYER_1, nil
-	case NETWORK_ID_AGGLAYER_2:
-		return CHAIN_ID_AGGLAYER_2, nil
-	default:
-		return 0, fmt.Errorf("unsupported network ID: %d", networkID)
-	}
-}
+
 
 func (c *EVMClaimSponsor) buildClaimTxData(claim *Claim) ([]byte, error) {
-	// Convert network IDs to chain IDs as required by the smart contract
-	originChainID, err := networkIDToChainID(claim.OriginNetwork)
-	if err != nil {
-		return nil, fmt.Errorf("error converting origin network ID to chain ID: %w", err)
-	}
-
-	destinationChainID, err := networkIDToChainID(claim.DestinationNetwork)
-	if err != nil {
-		return nil, fmt.Errorf("error converting destination network ID to chain ID: %w", err)
-	}
+	// Use network IDs directly as requested
 
 	var data []byte
+	var err error
 
 	switch claim.LeafType {
 	case LeafTypeAsset:
@@ -233,9 +209,9 @@ func (c *EVMClaimSponsor) buildClaimTxData(claim *Claim) ([]byte, error) {
 			claim.GlobalIndex,        // uint256 globalIndex
 			claim.MainnetExitRoot,    // bytes32 mainnetExitRoot
 			claim.RollupExitRoot,     // bytes32 rollupExitRoot
-			originChainID,            // uint32 originNetwork (chain ID)
+			claim.OriginNetwork,      // uint32 originNetwork (network ID)
 			claim.OriginTokenAddress, // address originTokenAddress,
-			destinationChainID,       // uint32 destinationNetwork (chain ID)
+			claim.DestinationNetwork, // uint32 destinationNetwork (network ID)
 			claim.DestinationAddress, // address destinationAddress
 			claim.Amount,             // uint256 amount
 			[]byte(claim.Metadata),   // bytes metadata (convert HexBytes to []byte)
@@ -246,9 +222,9 @@ func (c *EVMClaimSponsor) buildClaimTxData(claim *Claim) ([]byte, error) {
 			claim.GlobalIndex,        // uint256 globalIndex
 			claim.MainnetExitRoot,    // bytes32 mainnetExitRoot
 			claim.RollupExitRoot,     // bytes32 rollupExitRoot
-			originChainID,            // uint32 originNetwork (chain ID)
+			claim.OriginNetwork,      // uint32 originNetwork (network ID)
 			claim.OriginTokenAddress, // address originTokenAddress,
-			destinationChainID,       // uint32 destinationNetwork (chain ID)
+			claim.DestinationNetwork, // uint32 destinationNetwork (network ID)
 			claim.DestinationAddress, // address destinationAddress
 			claim.Amount,             // uint256 amount
 			[]byte(claim.Metadata),   // bytes metadata (convert HexBytes to []byte)
