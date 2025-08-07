@@ -79,6 +79,7 @@ func NewL1(
 	originNetwork uint32,
 	syncFullClaims bool,
 	requireStorageContentCompatibility bool,
+	autosponsor ClaimEnqueuer,
 ) (*BridgeSync, error) {
 	return newBridgeSync(
 		ctx,
@@ -96,7 +97,7 @@ func NewL1(
 		originNetwork,
 		syncFullClaims,
 		requireStorageContentCompatibility,
-		nil,
+		autosponsor,
 	)
 }
 

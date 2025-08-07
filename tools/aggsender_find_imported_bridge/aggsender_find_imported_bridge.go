@@ -9,7 +9,7 @@ import (
 	agglayertypes "github.com/agglayer/aggkit/agglayer/types"
 	"github.com/agglayer/aggkit/aggsender/rpcclient"
 	"github.com/agglayer/aggkit/aggsender/types"
-	"github.com/agglayer/aggkit/bridgesync"
+	"github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/log"
 )
 
@@ -34,7 +34,7 @@ func unmarshalGlobalIndex(globalIndex string) (*agglayertypes.GlobalIndex, error
 		if !ok {
 			return nil, fmt.Errorf("invalid global index: %v", globalIndex)
 		}
-		mainnetFlag, rollupIndex, leafIndex, err := bridgesync.DecodeGlobalIndex(bigInt)
+		mainnetFlag, rollupIndex, leafIndex, err := common.DecodeGlobalIndex(bigInt)
 		if err != nil {
 			return nil, fmt.Errorf("invalid global index, fail to decode: %v", globalIndex)
 		}

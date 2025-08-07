@@ -35,6 +35,7 @@ func TestE2EL1toEVML2(t *testing.T) {
 		0,
 		setup.EthTxManagerMock,
 		0, 0, time.Millisecond*10, time.Millisecond*10,
+		nil,
 	)
 	require.NoError(t, err)
 	go claimer.Start(ctx)

@@ -93,6 +93,8 @@ type EVMClaimSponsorConfig struct {
 	EthTxManager ethtxmanager.Config `mapstructure:"EthTxManager"`
 	// GasOffset is the gas to add on top of the estimated gas when sending the claim txs
 	GasOffset uint64 `mapstructure:"GasOffset"`
+	// ClaimAll indicates whether to automatically sponsor all claims
+	ClaimAll bool `mapstructure:"ClaimAll"`
 }
 
 func NewEVMClaimSponsor(

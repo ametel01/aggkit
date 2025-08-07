@@ -159,7 +159,7 @@ func L1Setup(t *testing.T, cfg *EnvironmentConfig) *L1Environment {
 		ctx, dbPathBridgeSyncL1, bridgeL1Addr,
 		syncBlockChunkSize, aggkittypes.LatestBlock, rdL1, testClient,
 		initialBlock, waitForNewBlocksPeriod, retryPeriod,
-		retriesCount, originNetwork, false, true)
+		retriesCount, originNetwork, false, true, nil)
 	require.NoError(t, err)
 
 	go bridgeL1Sync.Start(ctx)
@@ -224,7 +224,7 @@ func L2Setup(t *testing.T, cfg *EnvironmentConfig) *L2Environment {
 		ctx, dbPathL2BridgeSync, bridgeL2Addr, syncBlockChunkSize,
 		aggkittypes.LatestBlock, rdL2, testClient,
 		initialBlock, waitForNewBlocksPeriod, retryPeriod,
-		retriesCount, originNetwork, false, true)
+		retriesCount, originNetwork, false, true, nil)
 	require.NoError(t, err)
 
 	go bridgeL2Sync.Start(ctx)

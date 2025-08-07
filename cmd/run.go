@@ -93,11 +93,15 @@ func start(cliCtx *cli.Context) error {
 	}
 
 	l1InfoTreeSync := runL1InfoTreeSyncerIfNeeded(cliCtx.Context, components, *cfg, l1Client, reorgDetectorL1)
-	claimSponsor := runClaimSponsorIfNeeded(cliCtx.Context, components, l2Client, cfg.ClaimSponsor)
+	claimSponsor := runClaimSponsorIfNeeded(cliCtx.Context, components, l2Client, cfg.ClaimSponsor, l1InfoTreeSync)
+	autosponsor := claimSponsor
+	if !cfg.ClaimSponsor.ClaimAll {
+		autosponsor = nil
+	}
 	l1BridgeSync := runBridgeSyncL1IfNeeded(cliCtx.Context, components, cfg.BridgeL1Sync, reorgDetectorL1,
-		l1Client, 0)
+		l1Client, 0, autosponsor)
 	l2BridgeSync := runBridgeSyncL2IfNeeded(cliCtx.Context, components, cfg.BridgeL2Sync, reorgDetectorL2,
-		l2Client, rollupDataQuerier.RollupID)
+		l2Client, rollupDataQuerier.RollupID, autosponsor)
 	lastGERSync := runLastGERSyncIfNeeded(
 		cliCtx.Context, components, cfg.LastGERSync, reorgDetectorL2, l2Client, l1InfoTreeSync,
 	)
@@ -553,6 +557,7 @@ func runClaimSponsorIfNeeded(
 	components []string,
 	l2Client aggkittypes.BaseEthereumClienter,
 	cfg claimsponsor.EVMClaimSponsorConfig,
+	l1InfoTree *l1infotreesync.L1InfoTreeSync,
 ) *claimsponsor.ClaimSponsor {
 	if !isNeeded([]string{aggkitcommon.BRIDGE}, components) || !cfg.Enabled {
 		log.Info("ClaimSponsor is not enabled")
@@ -580,6 +585,7 @@ func runClaimSponsorIfNeeded(
 		cfg.MaxRetryAttemptsAfterError,
 		cfg.WaitTxToBeMinedPeriod.Duration,
 		cfg.WaitTxToBeMinedPeriod.Duration,
+		l1InfoTree,
 	)
 	if err != nil {
 		logger.Fatalf("error creating claim sponsor: %s", err)
@@ -636,6 +642,7 @@ func runBridgeSyncL1IfNeeded(
 	reorgDetectorL1 *reorgdetector.ReorgDetector,
 	l1Client aggkittypes.EthClienter,
 	rollupID uint32,
+	autosponsor *claimsponsor.ClaimSponsor,
 ) *bridgesync.BridgeSync {
 	if !isNeeded([]string{aggkitcommon.BRIDGE}, components) {
 		return nil
@@ -656,6 +663,7 @@ func runBridgeSyncL1IfNeeded(
 		rollupID,
 		true,
 		cfg.RequireStorageContentCompatibility,
+		autosponsor,
 	)
 	if err != nil {
 		log.Fatalf("error creating bridgeSyncL1: %s", err)
@@ -672,6 +680,7 @@ func runBridgeSyncL2IfNeeded(
 	reorgDetectorL2 *reorgdetector.ReorgDetector,
 	l2Client aggkittypes.EthClienter,
 	rollupID uint32,
+	autosponsor *claimsponsor.ClaimSponsor,
 ) *bridgesync.BridgeSync {
 	if !isNeeded([]string{
 		aggkitcommon.BRIDGE,
@@ -695,6 +704,7 @@ func runBridgeSyncL2IfNeeded(
 		rollupID,
 		true,
 		cfg.RequireStorageContentCompatibility,
+		autosponsor,
 	)
 	if err != nil {
 		log.Fatalf("error creating bridgeSyncL2: %s", err)

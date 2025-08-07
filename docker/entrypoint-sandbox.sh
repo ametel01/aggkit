@@ -13,6 +13,7 @@ AGGKIT_SANDBOX_ENABLED=${AGGKIT_SANDBOX_ENABLED:-"true"}
 AGGKIT_LOG_LEVEL=${AGGKIT_LOG_LEVEL:-info}
 AGGKIT_COMPONENTS=${AGGKIT_COMPONENTS:-"bridge,aggoracle,claim-sponsor"}
 AGGKIT_CLAIMSPONSOR_ENABLED=${AGGKIT_CLAIMSPONSOR_ENABLED:-"true"}
+AGGKIT_CLAIMSPONSOR_CLAIM_ALL=${AGGKIT_CLAIMSPONSOR_CLAIM_ALL:-"false"}
 
 # Network configuration
 AGGKIT_L1_CHAIN_ID=${AGGKIT_L1_CHAIN_ID:-${CHAIN_ID_MAINNET:-"1"}}
@@ -137,6 +138,7 @@ MaxRetryAttemptsAfterError = -1
 WaitTxToBeMinedPeriod = "3s"
 WaitOnEmptyQueue = "3s"
 GasOffset = 0
+ClaimAll = $AGGKIT_CLAIMSPONSOR_CLAIM_ALL
 
 [ClaimSponsor.EthTxManager]
 FrequencyToMonitorTxs = "1s"

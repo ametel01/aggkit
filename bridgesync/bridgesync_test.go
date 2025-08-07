@@ -68,6 +68,7 @@ func TestNewLx(t *testing.T) {
 		originNetwork,
 		false,
 		true,
+		nil,
 	)
 
 	require.NoError(t, err)
@@ -90,6 +91,7 @@ func TestNewLx(t *testing.T) {
 		originNetwork,
 		false,
 		true,
+		nil,
 	)
 
 	require.NoError(t, err)
@@ -116,6 +118,7 @@ func TestNewLx(t *testing.T) {
 		originNetwork,
 		false,
 		true,
+		nil,
 	)
 	t.Log(err)
 	require.Error(t, err)
@@ -224,6 +227,7 @@ func TestBridgeSync_GetTokenMappings(t *testing.T) {
 		originNetwork,
 		false,
 		false,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -356,6 +360,7 @@ func TestBridgeSync_GetLegacyTokenMigrations(t *testing.T) {
 		originNetwork,
 		false,
 		false,
+		nil,
 	)
 	require.NoError(t, err)
 
