@@ -10,7 +10,9 @@ import (
 
 	"github.com/0xPolygon/zkevm-ethtx-manager/ethtxmanager"
 	ethtxtypes "github.com/0xPolygon/zkevm-ethtx-manager/types"
+	aggkitcommon "github.com/agglayer/aggkit/common"
 	configTypes "github.com/agglayer/aggkit/config/types"
+	"github.com/agglayer/aggkit/l1infotreesync"
 	"github.com/agglayer/aggkit/log"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -63,6 +65,7 @@ type EVMClaimSponsor struct {
 	sender       common.Address
 	gasOffest    uint64
 	maxGas       uint64
+	l1InfoTree   *l1infotreesync.L1InfoTreeSync
 }
 
 type EVMClaimSponsorConfig struct {
@@ -104,6 +107,7 @@ func NewEVMClaimSponsor(
 	maxRetryAttemptsAfterError int,
 	waitTxToBeMinedPeriod time.Duration,
 	waitOnEmptyQueue time.Duration,
+	l1InfoTree *l1infotreesync.L1InfoTreeSync,
 ) (*ClaimSponsor, error) {
 	abi, err := getPolygonZkEVMBridgeV2ABI()
 	if err != nil {
@@ -118,6 +122,7 @@ func NewEVMClaimSponsor(
 		gasOffest:    gasOffset,
 		maxGas:       maxGas,
 		ethTxManager: ethTxManager,
+		l1InfoTree:   l1InfoTree,
 	}
 
 	baseSponsor, err := newClaimSponsor(
@@ -136,10 +141,25 @@ func NewEVMClaimSponsor(
 	return baseSponsor, nil
 }
 
-func (c *EVMClaimSponsor) checkClaim(ctx context.Context, claim *Claim) error {
+func (c *EVMClaimSponsor) checkClaim(ctx context.Context, claim *Claim) (*Claim, error) {
+	if claimRootsEmpty(claim) {
+		_, _, l1InfoIndex, err := aggkitcommon.DecodeGlobalIndex(claim.GlobalIndex)
+		if err != nil {
+			return claim, fmt.Errorf("error decoding global_index %d: %w", claim.GlobalIndex, err)
+		}
+
+		// Set actual roots in the claim. When the claim was created these fields were left empty
+		roots, err := GetRoots(ctx, c.l1InfoTree, l1InfoIndex)
+		if err != nil {
+			return claim, fmt.Errorf("error getting root: %w", err)
+		}
+		claim.MainnetExitRoot = roots.MainnetExitRoot
+		claim.RollupExitRoot = roots.RollupExitRoot
+	}
+
 	data, err := c.buildClaimTxData(claim)
 	if err != nil {
-		return err
+		return claim, err
 	}
 
 	gas, err := c.l2Client.EstimateGas(ctx, ethereum.CallMsg{
@@ -148,14 +168,14 @@ func (c *EVMClaimSponsor) checkClaim(ctx context.Context, claim *Claim) error {
 		Data: data,
 	})
 	if err != nil {
-		return err
+		return claim, err
 	}
 
 	if gas > c.maxGas {
-		return fmt.Errorf(gasTooHighErrTemplate, gas, c.maxGas)
+		return claim, fmt.Errorf(gasTooHighErrTemplate, gas, c.maxGas)
 	}
 
-	return nil
+	return claim, nil
 }
 
 func (c *EVMClaimSponsor) sendClaim(ctx context.Context, claim *Claim) (string, error) {
@@ -193,8 +213,6 @@ func (c *EVMClaimSponsor) claimStatus(ctx context.Context, id string) (ClaimStat
 		return "", fmt.Errorf("unexpected tx status: %v", res.Status)
 	}
 }
-
-
 
 func (c *EVMClaimSponsor) buildClaimTxData(claim *Claim) ([]byte, error) {
 	// Use network IDs directly as requested
@@ -245,4 +263,8 @@ var bridgeABIJSON []byte
 
 func getPolygonZkEVMBridgeV2ABI() (abi.ABI, error) {
 	return abi.JSON(bytes.NewReader(bridgeABIJSON))
+}
+
+func claimRootsEmpty(claim *Claim) bool {
+	return claim.MainnetExitRoot == common.Hash{} && claim.RollupExitRoot == common.Hash{}
 }

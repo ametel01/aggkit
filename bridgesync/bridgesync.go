@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/0xPolygon/cdk-contracts-tooling/contracts/pp/l2-sovereign-chain/polygonzkevmbridgev2"
+	"github.com/agglayer/aggkit/claimsponsor"
 	"github.com/agglayer/aggkit/log"
 	"github.com/agglayer/aggkit/reorgdetector"
 	"github.com/agglayer/aggkit/sync"
@@ -43,6 +44,10 @@ var (
 type ReorgDetector interface {
 	sync.ReorgDetector
 	GetLastReorgEvent(ctx context.Context) (reorgdetector.ReorgEvent, error)
+}
+
+type ClaimEnqueuer interface {
+	AddClaimToQueue(c *claimsponsor.Claim) error
 }
 
 // BridgeSync manages the state of the exit tree for the bridge contract by processing Ethereum blockchain events.
@@ -91,6 +96,7 @@ func NewL1(
 		originNetwork,
 		syncFullClaims,
 		requireStorageContentCompatibility,
+		nil,
 	)
 }
 
@@ -110,6 +116,7 @@ func NewL2(
 	originNetwork uint32,
 	syncFullClaims bool,
 	requireStorageContentCompatibility bool,
+	autosponsor ClaimEnqueuer,
 ) (*BridgeSync, error) {
 	return newBridgeSync(
 		ctx,
@@ -127,6 +134,7 @@ func NewL2(
 		originNetwork,
 		syncFullClaims,
 		requireStorageContentCompatibility,
+		autosponsor,
 	)
 }
 
@@ -146,6 +154,7 @@ func newBridgeSync(
 	originNetwork uint32,
 	syncFullClaims bool,
 	requireStorageContentCompatibility bool,
+	autosponsor ClaimEnqueuer,
 ) (*BridgeSync, error) {
 	logger := log.WithFields("module", syncerID.String())
 
@@ -160,7 +169,7 @@ func newBridgeSync(
 			bridge.String(), err)
 		return nil, err
 	}
-	processor, err := newProcessor(dbPath, "bridge_sync_"+syncerID.String(), logger)
+	processor, err := newProcessor(dbPath, "bridge_sync_"+syncerID.String(), logger, autosponsor, originNetwork)
 	if err != nil {
 		return nil, err
 	}

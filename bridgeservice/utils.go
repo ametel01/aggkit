@@ -7,6 +7,7 @@ import (
 
 	bridgetypes "github.com/agglayer/aggkit/bridgeservice/types"
 	"github.com/agglayer/aggkit/bridgesync"
+	"github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/l1infotreesync"
 	"github.com/gin-gonic/gin"
 )
@@ -171,7 +172,7 @@ func NewPendingClaimResponse(bridge *bridgesync.Bridge) *bridgetypes.ClaimRespon
 	if mainnetFlag {
 		rollupIndex = 0
 	}
-	globalIndex := bridgesync.GenerateGlobalIndex(mainnetFlag, rollupIndex, bridge.DepositCount)
+	globalIndex := common.GenerateGlobalIndex(mainnetFlag, rollupIndex, bridge.DepositCount)
 
 	return &bridgetypes.ClaimResponse{
 		GlobalIndex:        bridgetypes.BigIntString(globalIndex.String()),

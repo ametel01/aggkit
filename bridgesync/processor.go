@@ -13,6 +13,7 @@ import (
 
 	bridgetypes "github.com/agglayer/aggkit/bridgeservice/types"
 	"github.com/agglayer/aggkit/bridgesync/migrations"
+	"github.com/agglayer/aggkit/claimsponsor"
 	aggkitcommon "github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/db"
 	"github.com/agglayer/aggkit/db/compatibility"
@@ -29,9 +30,6 @@ import (
 )
 
 const (
-	globalIndexPartSize = 4
-	globalIndexMaxSize  = 9
-
 	// bridgeTableName is the name of the table that stores bridge events
 	bridgeTableName = "bridge"
 
@@ -283,9 +281,11 @@ type processor struct {
 	halted       bool
 	haltedReason string
 	compatibility.CompatibilityDataStorager[sync.RuntimeData]
+	enqueuer  ClaimEnqueuer
+	networkId uint32
 }
 
-func newProcessor(dbPath string, name string, logger *log.Logger) (*processor, error) {
+func newProcessor(dbPath string, name string, logger *log.Logger, enqueuer ClaimEnqueuer, networkId uint32) (*processor, error) {
 	err := migrations.RunMigrations(dbPath)
 	if err != nil {
 		return nil, err
@@ -304,6 +304,8 @@ func newProcessor(dbPath string, name string, logger *log.Logger) (*processor, e
 			db.NewKeyValueStorage(database),
 			name,
 		),
+		enqueuer:  enqueuer,
+		networkId: networkId,
 	}, nil
 }
 
@@ -496,7 +498,7 @@ func (p *processor) GetPendingClaimsPaged(
 	// Build WHERE clause to find bridges that haven't been claimed
 	// We need to find bridges where the global index doesn't exist in the claims table
 	whereClause := p.buildPendingClaimsFilterClause(networkIDs, fromAddress)
-	
+
 	// For pending claims, we need bridges that don't have corresponding claims
 	// Use a LEFT JOIN to find bridges without claims
 	// NOTE: This simplified global index calculation must match the GenerateGlobalIndex function
@@ -536,7 +538,7 @@ func (p *processor) GetPendingClaimsPaged(
 
 	// Get the actual pending bridges
 	orderByClause := "b.block_num DESC, b.block_pos DESC"
-	
+
 	bridgeQuery := fmt.Sprintf(`
 		SELECT b.* 
 		FROM %s b
@@ -578,7 +580,7 @@ func (p *processor) GetPendingClaimsPaged(
 func (p *processor) buildPendingClaimsFilterClause(networkIDs []uint32, fromAddress string) string {
 	const clauseCapacity = 2
 	clauses := make([]string, 0, clauseCapacity)
-	
+
 	if len(networkIDs) > 0 {
 		clauses = append(clauses, buildNetworkIDsFilter(networkIDs, "b.destination_network"))
 	}
@@ -824,6 +826,12 @@ func (p *processor) ProcessBlock(ctx context.Context, block sync.Block) error {
 				p.log.Errorf("failed to insert bridge event at block %d: %v", block.Num, err)
 				return err
 			}
+			if p.enqueuer != nil && event.Bridge.DestinationNetwork == p.networkId {
+				claim := bridgeToClaim(event.Bridge)
+				if err := p.enqueuer.AddClaimToQueue(claim); err != nil {
+					p.log.Errorf("auto-sponsor enqueue failed: %v", err)
+				}
+			}
 		}
 
 		if event.Claim != nil {
@@ -951,58 +959,6 @@ func buildNetworkIDsFilter(networkIDs []uint32, networkIDColumn string) string {
 	return fmt.Sprintf("%s IN (%s)", networkIDColumn, strings.Join(placeholders, ", "))
 }
 
-func GenerateGlobalIndex(mainnetFlag bool, rollupIndex uint32, localExitRootIndex uint32) *big.Int {
-	var (
-		globalIndexBytes []byte
-		buf              [globalIndexPartSize]byte
-	)
-	if mainnetFlag {
-		globalIndexBytes = append(globalIndexBytes, big.NewInt(1).Bytes()...)
-		ri := new(big.Int).FillBytes(buf[:])
-		globalIndexBytes = append(globalIndexBytes, ri...)
-	} else {
-		ri := new(big.Int).SetUint64(uint64(rollupIndex)).FillBytes(buf[:])
-		globalIndexBytes = append(globalIndexBytes, ri...)
-	}
-	leri := new(big.Int).SetUint64(uint64(localExitRootIndex)).FillBytes(buf[:])
-	globalIndexBytes = append(globalIndexBytes, leri...)
-
-	result := new(big.Int).SetBytes(globalIndexBytes)
-
-	return result
-}
-
-// Decodes global index to its three parts:
-// 1. mainnetFlag - first byte
-// 2. rollupIndex - next 4 bytes
-// 3. localExitRootIndex - last 4 bytes
-// NOTE - mainnet flag is not in the global index bytes if it is false
-// NOTE - rollup index is 0 if mainnet flag is true
-// NOTE - rollup index is not in the global index bytes if mainnet flag is false and rollup index is 0
-func DecodeGlobalIndex(globalIndex *big.Int) (mainnetFlag bool,
-	rollupIndex uint32, localExitRootIndex uint32, err error) {
-	globalIndexBytes := globalIndex.Bytes()
-	l := len(globalIndexBytes)
-
-	if l == 0 {
-		// false, 0, 0
-		return
-	}
-
-	if l == globalIndexMaxSize {
-		// true, rollupIndex, localExitRootIndex
-		mainnetFlag = true
-	}
-
-	localExitRootFromIdx := max(l-globalIndexPartSize, 0)
-	rollupIndexFromIdx := max(localExitRootFromIdx-globalIndexPartSize, 0)
-
-	rollupIndex = aggkitcommon.BytesToUint32(globalIndexBytes[rollupIndexFromIdx:localExitRootFromIdx])
-	localExitRootIndex = aggkitcommon.BytesToUint32(globalIndexBytes[localExitRootFromIdx:])
-
-	return
-}
-
 //nolint:unparam
 func (p *processor) startTransaction(ctx context.Context, isReadOnly bool) (*sql.Tx, error) {
 	tx, err := p.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: isReadOnly})
@@ -1034,4 +990,18 @@ func (p *processor) isHalted() bool {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.halted
+}
+
+func bridgeToClaim(b *Bridge) *claimsponsor.Claim {
+	return &claimsponsor.Claim{
+		LeafType:           b.LeafType,
+		GlobalIndex:        aggkitcommon.GenerateGlobalIndex(b.OriginNetwork == 0, b.OriginNetwork, b.DepositCount),
+		OriginNetwork:      b.OriginNetwork,
+		OriginTokenAddress: b.OriginAddress,
+		DestinationNetwork: b.DestinationNetwork,
+		DestinationAddress: b.DestinationAddress,
+		Amount:             b.Amount,
+		Metadata:           b.Metadata,
+		Status:             claimsponsor.PendingClaimStatus,
+	}
 }

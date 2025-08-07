@@ -15,6 +15,7 @@ import (
 	"github.com/0xPolygon/cdk-contracts-tooling/contracts/fep/etrog/polygonzkevmbridge"
 	bridgetypes "github.com/agglayer/aggkit/bridgeservice/types"
 	"github.com/agglayer/aggkit/bridgesync/migrations"
+	aggkitcommon "github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/db"
 	"github.com/agglayer/aggkit/log"
 	"github.com/agglayer/aggkit/sync"
@@ -27,7 +28,7 @@ import (
 )
 
 func TestBigIntString(t *testing.T) {
-	globalIndex := GenerateGlobalIndex(true, 0, 1093)
+	globalIndex := aggkitcommon.GenerateGlobalIndex(true, 0, 1093)
 	fmt.Println(globalIndex.String())
 
 	_, ok := new(big.Int).SetString(globalIndex.String(), 10)
@@ -47,7 +48,7 @@ func TestBigIntString(t *testing.T) {
 	claim := &Claim{
 		BlockNum:            1,
 		BlockPos:            0,
-		GlobalIndex:         GenerateGlobalIndex(true, 0, 1093),
+		GlobalIndex:         aggkitcommon.GenerateGlobalIndex(true, 0, 1093),
 		OriginNetwork:       11,
 		Amount:              big.NewInt(11),
 		OriginAddress:       common.HexToAddress("0x11"),
@@ -734,7 +735,7 @@ func TestDecodeGlobalIndex(t *testing.T) {
 	}{
 		{
 			name:                "Mainnet flag true, rollup index 0",
-			globalIndex:         GenerateGlobalIndex(true, 0, 2),
+			globalIndex:         aggkitcommon.GenerateGlobalIndex(true, 0, 2),
 			expectedMainnetFlag: true,
 			expectedRollupIndex: 0,
 			expectedLocalIndex:  2,
@@ -742,7 +743,7 @@ func TestDecodeGlobalIndex(t *testing.T) {
 		},
 		{
 			name:                "Mainnet flag true, indexes 0",
-			globalIndex:         GenerateGlobalIndex(true, 0, 0),
+			globalIndex:         aggkitcommon.GenerateGlobalIndex(true, 0, 0),
 			expectedMainnetFlag: true,
 			expectedRollupIndex: 0,
 			expectedLocalIndex:  0,
@@ -750,7 +751,7 @@ func TestDecodeGlobalIndex(t *testing.T) {
 		},
 		{
 			name:                "Mainnet flag false, rollup index 0",
-			globalIndex:         GenerateGlobalIndex(false, 0, 2),
+			globalIndex:         aggkitcommon.GenerateGlobalIndex(false, 0, 2),
 			expectedMainnetFlag: false,
 			expectedRollupIndex: 0,
 			expectedLocalIndex:  2,
@@ -758,7 +759,7 @@ func TestDecodeGlobalIndex(t *testing.T) {
 		},
 		{
 			name:                "Mainnet flag false, rollup index non-zero",
-			globalIndex:         GenerateGlobalIndex(false, 11, 0),
+			globalIndex:         aggkitcommon.GenerateGlobalIndex(false, 11, 0),
 			expectedMainnetFlag: false,
 			expectedRollupIndex: 11,
 			expectedLocalIndex:  0,
@@ -766,7 +767,7 @@ func TestDecodeGlobalIndex(t *testing.T) {
 		},
 		{
 			name:                "Mainnet flag false, indexes 0",
-			globalIndex:         GenerateGlobalIndex(false, 0, 0),
+			globalIndex:         aggkitcommon.GenerateGlobalIndex(false, 0, 0),
 			expectedMainnetFlag: false,
 			expectedRollupIndex: 0,
 			expectedLocalIndex:  0,
@@ -774,7 +775,7 @@ func TestDecodeGlobalIndex(t *testing.T) {
 		},
 		{
 			name:                "Mainnet flag false, indexes non zero",
-			globalIndex:         GenerateGlobalIndex(false, 1231, 111234),
+			globalIndex:         aggkitcommon.GenerateGlobalIndex(false, 1231, 111234),
 			expectedMainnetFlag: false,
 			expectedRollupIndex: 1231,
 			expectedLocalIndex:  111234,
@@ -788,7 +789,7 @@ func TestDecodeGlobalIndex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mainnetFlag, rollupIndex, localExitRootIndex, err := DecodeGlobalIndex(tt.globalIndex)
+			mainnetFlag, rollupIndex, localExitRootIndex, err := aggkitcommon.DecodeGlobalIndex(tt.globalIndex)
 			if tt.expectedErr != nil {
 				require.EqualError(t, err, tt.expectedErr.Error())
 			} else {
@@ -817,7 +818,7 @@ func TestInsertAndGetClaim(t *testing.T) {
 	testClaim := &Claim{
 		BlockNum:            1,
 		BlockPos:            0,
-		GlobalIndex:         GenerateGlobalIndex(true, 0, 1093),
+		GlobalIndex:         aggkitcommon.GenerateGlobalIndex(true, 0, 1093),
 		OriginNetwork:       11,
 		OriginAddress:       common.HexToAddress("0x11"),
 		DestinationAddress:  common.HexToAddress("0x11"),

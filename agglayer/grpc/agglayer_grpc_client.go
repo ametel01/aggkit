@@ -10,7 +10,7 @@ import (
 	v1 "buf.build/gen/go/agglayer/agglayer/protocolbuffers/go/agglayer/node/v1"
 	v1types "buf.build/gen/go/agglayer/interop/protocolbuffers/go/agglayer/interop/types/v1"
 	"github.com/agglayer/aggkit/agglayer/types"
-	"github.com/agglayer/aggkit/bridgesync"
+	aggkitcommon "github.com/agglayer/aggkit/common"
 	aggkitgrpc "github.com/agglayer/aggkit/grpc"
 	treetypes "github.com/agglayer/aggkit/tree/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -286,7 +286,7 @@ func convertToProtoImportedBridgeExit(ibe *types.ImportedBridgeExit) (*v1types.I
 	importedBridgeExit := &v1types.ImportedBridgeExit{
 		BridgeExit: convertToProtoBridgeExit(ibe.BridgeExit),
 		GlobalIndex: &v1types.FixedBytes32{
-			Value: common.BigToHash(bridgesync.GenerateGlobalIndex(
+			Value: common.BigToHash(aggkitcommon.GenerateGlobalIndex(
 				ibe.GlobalIndex.MainnetFlag,
 				ibe.GlobalIndex.RollupIndex,
 				ibe.GlobalIndex.LeafIndex)).Bytes(),

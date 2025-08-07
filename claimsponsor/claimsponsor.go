@@ -115,7 +115,7 @@ func (c *Claim) Key() []byte {
 }
 
 type ClaimSender interface {
-	checkClaim(ctx context.Context, claim *Claim) error
+	checkClaim(ctx context.Context, claim *Claim) (*Claim, error)
 	sendClaim(ctx context.Context, claim *Claim) (string, error)
 	claimStatus(ctx context.Context, id string) (ClaimStatus, error)
 }
@@ -197,6 +197,10 @@ func (c *ClaimSponsor) claim(ctx context.Context) error {
 				return nil
 			}
 			return fmt.Errorf("error calling getClaim with globalIndex %s: %w", claim.GlobalIndex.String(), err)
+		}
+		claim, err = c.sender.checkClaim(ctx, claim)
+		if err != nil {
+			return fmt.Errorf("error checking claim: %w", err)
 		}
 		txID, err := c.sender.sendClaim(ctx, claim)
 		if err != nil {
