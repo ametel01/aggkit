@@ -94,14 +94,19 @@ func start(cliCtx *cli.Context) error {
 
 	l1InfoTreeSync := runL1InfoTreeSyncerIfNeeded(cliCtx.Context, components, *cfg, l1Client, reorgDetectorL1)
 	claimSponsor := runClaimSponsorIfNeeded(cliCtx.Context, components, l2Client, cfg.ClaimSponsor, l1InfoTreeSync)
-	autosponsor := claimSponsor
-	if !cfg.ClaimSponsor.ClaimAll {
-		autosponsor = nil
+	var autosponsor bridgesync.ClaimEnqueuer
+	if cfg.ClaimSponsor.ClaimAll {
+		autosponsor = claimSponsor
+	}
+	if autosponsor == nil {
+		log.Infof("autosponsor not wired")
+	} else {
+		log.Infof("Autosponsor wired")
 	}
 	l1BridgeSync := runBridgeSyncL1IfNeeded(cliCtx.Context, components, cfg.BridgeL1Sync, reorgDetectorL1,
-		l1Client, 0, autosponsor)
+		l1Client, 0, autosponsor, cfg.Common.NetworkID)
 	l2BridgeSync := runBridgeSyncL2IfNeeded(cliCtx.Context, components, cfg.BridgeL2Sync, reorgDetectorL2,
-		l2Client, rollupDataQuerier.RollupID, autosponsor)
+		l2Client, rollupDataQuerier.RollupID, autosponsor, cfg.Common.NetworkID)
 	lastGERSync := runLastGERSyncIfNeeded(
 		cliCtx.Context, components, cfg.LastGERSync, reorgDetectorL2, l2Client, l1InfoTreeSync,
 	)
@@ -642,7 +647,8 @@ func runBridgeSyncL1IfNeeded(
 	reorgDetectorL1 *reorgdetector.ReorgDetector,
 	l1Client aggkittypes.EthClienter,
 	rollupID uint32,
-	autosponsor *claimsponsor.ClaimSponsor,
+	autosponsor bridgesync.ClaimEnqueuer,
+	networkID uint32,
 ) *bridgesync.BridgeSync {
 	if !isNeeded([]string{aggkitcommon.BRIDGE}, components) {
 		return nil
@@ -664,6 +670,7 @@ func runBridgeSyncL1IfNeeded(
 		true,
 		cfg.RequireStorageContentCompatibility,
 		autosponsor,
+		networkID,
 	)
 	if err != nil {
 		log.Fatalf("error creating bridgeSyncL1: %s", err)
@@ -680,7 +687,8 @@ func runBridgeSyncL2IfNeeded(
 	reorgDetectorL2 *reorgdetector.ReorgDetector,
 	l2Client aggkittypes.EthClienter,
 	rollupID uint32,
-	autosponsor *claimsponsor.ClaimSponsor,
+	autosponsor bridgesync.ClaimEnqueuer,
+	networkID uint32,
 ) *bridgesync.BridgeSync {
 	if !isNeeded([]string{
 		aggkitcommon.BRIDGE,
@@ -705,6 +713,7 @@ func runBridgeSyncL2IfNeeded(
 		true,
 		cfg.RequireStorageContentCompatibility,
 		autosponsor,
+		networkID,
 	)
 	if err != nil {
 		log.Fatalf("error creating bridgeSyncL2: %s", err)

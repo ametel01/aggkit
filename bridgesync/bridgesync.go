@@ -80,6 +80,7 @@ func NewL1(
 	syncFullClaims bool,
 	requireStorageContentCompatibility bool,
 	autosponsor ClaimEnqueuer,
+	networkID uint32,
 ) (*BridgeSync, error) {
 	return newBridgeSync(
 		ctx,
@@ -98,6 +99,7 @@ func NewL1(
 		syncFullClaims,
 		requireStorageContentCompatibility,
 		autosponsor,
+		networkID,
 	)
 }
 
@@ -118,6 +120,7 @@ func NewL2(
 	syncFullClaims bool,
 	requireStorageContentCompatibility bool,
 	autosponsor ClaimEnqueuer,
+	networkID uint32,
 ) (*BridgeSync, error) {
 	return newBridgeSync(
 		ctx,
@@ -136,6 +139,7 @@ func NewL2(
 		syncFullClaims,
 		requireStorageContentCompatibility,
 		autosponsor,
+		networkID,
 	)
 }
 
@@ -156,6 +160,7 @@ func newBridgeSync(
 	syncFullClaims bool,
 	requireStorageContentCompatibility bool,
 	autosponsor ClaimEnqueuer,
+	networkID uint32,
 ) (*BridgeSync, error) {
 	logger := log.WithFields("module", syncerID.String())
 
@@ -170,7 +175,7 @@ func newBridgeSync(
 			bridge.String(), err)
 		return nil, err
 	}
-	processor, err := newProcessor(dbPath, "bridge_sync_"+syncerID.String(), logger, autosponsor, originNetwork)
+	processor, err := newProcessor(dbPath, "bridge_sync_"+syncerID.String(), logger, autosponsor, networkID)
 	if err != nil {
 		return nil, err
 	}

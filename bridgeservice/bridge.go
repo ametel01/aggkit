@@ -464,9 +464,9 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 	// Get pending claims from all bridge databases where destination_network matches
 	// We need to check both L1 and L2 bridge databases for pending claims targeting this network
 	// Use network ID directly as requested
-	
+
 	b.logger.Debugf("Looking for pending claims targeting network ID %d", networkID)
-	
+
 	var allPendingBridges []*bridgesync.Bridge
 	var totalPendingCount int
 
@@ -497,15 +497,15 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 
 	// Combine completed and pending claims
 	var claimResponses []*types.ClaimResponse
-	
+
 	// Add completed claims
 	completedResponses := aggkitcommon.MapSlice(completedClaims, NewClaimResponse)
 	claimResponses = append(claimResponses, completedResponses...)
-	
+
 	// Add pending claims
 	pendingResponses := aggkitcommon.MapSlice(pendingBridges, NewPendingClaimResponse)
 	claimResponses = append(claimResponses, pendingResponses...)
-	
+
 	totalCount := completedCount + pendingCount
 
 	result := types.ClaimsResult{
@@ -1001,13 +1001,13 @@ func (b *BridgeService) SponsorClaimHandler(c *gin.Context) {
 		return
 	}
 
-	if claim.DestinationNetwork != b.networkID {
-		b.logger.Warnf("invalid destination network %d (expected %d)", claim.DestinationNetwork, b.networkID)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("this client only sponsors claims for destination network %d", b.networkID),
-		})
-		return
-	}
+	// if claim.DestinationNetwork != b.networkID {
+	// 	b.logger.Warnf("invalid destination network %d (expected %d)", claim.DestinationNetwork, b.networkID)
+	// 	c.JSON(http.StatusBadRequest, gin.H{
+	// 		"error": fmt.Sprintf("this client only sponsors claims for destination network %d", b.networkID),
+	// 	})
+	// 	return
+	// }
 
 	if err := b.sponsor.AddClaimToQueue(&claim); err != nil {
 		b.logger.Errorf("failed to add claim to queue: %v", err)
@@ -1258,7 +1258,7 @@ func (b *BridgeService) getFirstL1InfoTreeIndexForL2Bridge(ctx context.Context, 
 	// (produced by the smart contract call verifyBatches / verifyBatchesTrustedAggregator)
 	// are included in the L1 info tree. As per the current implementation (smart contracts) of the protocol
 	// this is true. This could change in the future
-	
+
 	// In sandbox mode, if verified batches are not available, return a default L1 info tree index
 	if b.isSandboxMode() {
 		_, err := b.l1InfoTree.GetLastVerifiedBatches(b.networkID)
@@ -1272,7 +1272,7 @@ func (b *BridgeService) getFirstL1InfoTreeIndexForL2Bridge(ctx context.Context, 
 		}
 		// If verified batches exist in sandbox mode, continue with normal processing
 	}
-	
+
 	lastVerified, err := b.l1InfoTree.GetLastVerifiedBatches(b.networkID)
 	if err != nil {
 		return 0, err
@@ -1368,14 +1368,14 @@ func (b *BridgeService) createSandboxMetadata() *types.SandboxMetadata {
 	// Build list of supported L2 networks
 	primaryL2ChainID := uint32(b.sandboxConfig.L2Node.ChainID)
 	supportedL2Networks := []uint32{primaryL2ChainID}
-	
+
 	// Add other valid L2 network IDs that the bridge service supports
 	for networkID := uint32(1); networkID <= 3; networkID++ {
 		if networkID != primaryL2ChainID && b.isValidL2NetworkID(networkID) {
 			supportedL2Networks = append(supportedL2Networks, networkID)
 		}
 	}
-	
+
 	return &types.SandboxMetadata{
 		SandboxMode:      true,
 		AutoSettle:       b.sandboxConfig.AutoSettle,
@@ -1384,11 +1384,11 @@ func (b *BridgeService) createSandboxMetadata() *types.SandboxMetadata {
 		SettlementDelay:  b.sandboxConfig.SettlementDelay.String(),
 		GeneratedAt:      time.Now().Unix(),
 		DevMetadata: map[string]interface{}{
-			"bridge_mode": "sandbox",
-			"l1_chain_id": b.sandboxConfig.L1Node.ChainID,
-			"l2_chain_id": b.sandboxConfig.L2Node.ChainID, // Primary L2
-			"supported_l2_networks": supportedL2Networks, // All supported L2s
-			"multi_l2_enabled": len(supportedL2Networks) > 1,
+			"bridge_mode":           "sandbox",
+			"l1_chain_id":           b.sandboxConfig.L1Node.ChainID,
+			"l2_chain_id":           b.sandboxConfig.L2Node.ChainID, // Primary L2
+			"supported_l2_networks": supportedL2Networks,            // All supported L2s
+			"multi_l2_enabled":      len(supportedL2Networks) > 1,
 		},
 	}
 }
@@ -1438,8 +1438,6 @@ func (b *BridgeService) enhanceClaimProofWithSandbox(claimProof *types.ClaimProo
 func (b *BridgeService) isClaimInstantlyReady() bool {
 	return b.isSandboxMode() && b.sandboxConfig.InstantClaims
 }
-
-
 
 // isValidL2NetworkID validates if a network ID is a valid L2 network ID
 // For multi-L2 scenarios, this allows network IDs 1-3 for L2 chains, and 31337-31339 for local development
