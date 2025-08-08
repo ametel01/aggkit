@@ -93,20 +93,18 @@ func start(cliCtx *cli.Context) error {
 	}
 
 	l1InfoTreeSync := runL1InfoTreeSyncerIfNeeded(cliCtx.Context, components, *cfg, l1Client, reorgDetectorL1)
-	claimSponsor := runClaimSponsorIfNeeded(cliCtx.Context, components, l2Client, cfg.ClaimSponsor, l1InfoTreeSync)
-	var autosponsor bridgesync.ClaimEnqueuer
+	claimSponsorFwd := runClaimSponsorIfNeeded(cliCtx.Context, components, l2Client, cfg.ClaimSponsor, l1InfoTreeSync)
+	claimSponsorRev := runClaimSponsorIfNeeded(cliCtx.Context, components, l1Client, cfg.ClaimSponsorReverse, l1InfoTreeSync)
+	var autosponsorL1, autosponsorL2 bridgesync.ClaimEnqueuer
 	if cfg.ClaimSponsor.ClaimAll {
-		autosponsor = claimSponsor
+		autosponsorL1 = claimSponsorRev
+		autosponsorL2 = claimSponsorFwd
 	}
-	if autosponsor == nil {
-		log.Infof("autosponsor not wired")
-	} else {
-		log.Infof("Autosponsor wired")
-	}
+
 	l1BridgeSync := runBridgeSyncL1IfNeeded(cliCtx.Context, components, cfg.BridgeL1Sync, reorgDetectorL1,
-		l1Client, 0, autosponsor, cfg.Common.NetworkID)
+		l1Client, 0, autosponsorL1, 0)
 	l2BridgeSync := runBridgeSyncL2IfNeeded(cliCtx.Context, components, cfg.BridgeL2Sync, reorgDetectorL2,
-		l2Client, rollupDataQuerier.RollupID, autosponsor, cfg.Common.NetworkID)
+		l2Client, rollupDataQuerier.RollupID, autosponsorL2, cfg.Common.NetworkID)
 	lastGERSync := runLastGERSyncIfNeeded(
 		cliCtx.Context, components, cfg.LastGERSync, reorgDetectorL2, l2Client, l1InfoTreeSync,
 	)
@@ -136,7 +134,8 @@ func start(cliCtx *cli.Context) error {
 			b := createBridgeService(
 				cfg.REST,
 				cfg.Common.NetworkID,
-				claimSponsor,
+				claimSponsorFwd,
+				claimSponsorRev,
 				l1InfoTreeSync,
 				lastGERSync,
 				l1BridgeSync,
@@ -726,7 +725,8 @@ func runBridgeSyncL2IfNeeded(
 func createBridgeService(
 	cfg aggkitcommon.RESTConfig,
 	l2NetworkID uint32,
-	sponsor *claimsponsor.ClaimSponsor,
+	sponsorFwd *claimsponsor.ClaimSponsor,
+	sponsorRev *claimsponsor.ClaimSponsor,
 	l1InfoTree *l1infotreesync.L1InfoTreeSync,
 	injectedGERs *lastgersync.LastGERSync,
 	bridgeL1 *bridgesync.BridgeSync,
@@ -746,7 +746,8 @@ func createBridgeService(
 
 	return bridgeservice.New(
 		bridgeCfg,
-		sponsor,
+		sponsorFwd,
+		sponsorRev,
 		l1InfoTree,
 		injectedGERs,
 		bridgeL1,

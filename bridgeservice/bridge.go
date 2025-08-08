@@ -84,7 +84,8 @@ type BridgeService struct {
 	readTimeout   time.Duration
 	writeTimeout  time.Duration
 	networkID     uint32
-	sponsor       ClaimSponsorer
+	sponsorL1     ClaimSponsorer
+	sponsorL2     ClaimSponsorer
 	l1InfoTree    L1InfoTreer
 	injectedGERs  LastGERer
 	bridgeL1      Bridger
@@ -97,7 +98,8 @@ type BridgeService struct {
 // New returns instance of BridgeService
 func New(
 	cfg *Config,
-	sponsor ClaimSponsorer,
+	sponsorFwd ClaimSponsorer,
+	sponsorRev ClaimSponsorer,
 	l1InfoTree L1InfoTreer,
 	injectedGERs LastGERer,
 	bridgeL1 Bridger,
@@ -135,7 +137,8 @@ func New(
 		readTimeout:   cfg.ReadTimeout,
 		writeTimeout:  cfg.WriteTimeout,
 		networkID:     cfg.NetworkID,
-		sponsor:       sponsor,
+		sponsorL1:     sponsorRev,
+		sponsorL2:     sponsorFwd,
 		l1InfoTree:    l1InfoTree,
 		injectedGERs:  injectedGERs,
 		bridgeL1:      bridgeL1,
@@ -995,21 +998,18 @@ func (b *BridgeService) SponsorClaimHandler(c *gin.Context) {
 	}
 	cnt.Add(ctx, 1)
 
-	if b.sponsor == nil {
+	sponsor := b.sponsorL1
+	if claim.OriginNetwork == 1 {
+		sponsor = b.sponsorL2
+	}
+
+	if sponsor == nil {
 		b.logger.Warn("claim sponsoring not supported by this client")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "this client does not support claim sponsoring"})
 		return
 	}
 
-	// if claim.DestinationNetwork != b.networkID {
-	// 	b.logger.Warnf("invalid destination network %d (expected %d)", claim.DestinationNetwork, b.networkID)
-	// 	c.JSON(http.StatusBadRequest, gin.H{
-	// 		"error": fmt.Sprintf("this client only sponsors claims for destination network %d", b.networkID),
-	// 	})
-	// 	return
-	// }
-
-	if err := b.sponsor.AddClaimToQueue(&claim); err != nil {
+	if err := sponsor.AddClaimToQueue(&claim); err != nil {
 		b.logger.Errorf("failed to add claim to queue: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add claim to queue: " + err.Error()})
 		return
@@ -1026,6 +1026,7 @@ func (b *BridgeService) SponsorClaimHandler(c *gin.Context) {
 // Only available if claim sponsoring is enabled.
 // @Tags claim-sponsoring
 // @Param global_index query string true "Global index of the claim (big.Int format)"
+// @Param network_id query uint32 true "Origin network ID"
 // @Produce json
 // @Success 200 {object} string "Claim sponsorship status"
 // @Failure 400 {object} types.ErrorResponse "Bad Request"
@@ -1034,7 +1035,14 @@ func (b *BridgeService) SponsorClaimHandler(c *gin.Context) {
 func (b *BridgeService) GetSponsoredClaimStatusHandler(c *gin.Context) {
 	globalIndexRaw := c.Query(globalIndexParam)
 
-	b.logger.Debugf("GetSponsoredClaimStatus request received (claim global index=%s)", globalIndexRaw)
+	networkID, err := parseUintQuery(c, networkIDParam, true, uint32(0))
+	if err != nil {
+		b.logger.Warnf(errNetworkID, err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	b.logger.Debugf("GetSponsoredClaimStatus request received (claim global index=%s, origin network=%d)", globalIndexRaw, networkID)
 	ctx, cancel := context.WithTimeout(c, b.readTimeout)
 	defer cancel()
 
@@ -1044,7 +1052,11 @@ func (b *BridgeService) GetSponsoredClaimStatusHandler(c *gin.Context) {
 	}
 	cnt.Add(ctx, 1)
 
-	if b.sponsor == nil {
+	sponsor := b.sponsorL1
+	if networkID == mainnetNetworkID {
+		sponsor = b.sponsorL2
+	}
+	if sponsor == nil {
 		b.logger.Warn("claim sponsoring not supported by this client")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "this client does not support claim sponsoring"})
 		return
@@ -1057,7 +1069,7 @@ func (b *BridgeService) GetSponsoredClaimStatusHandler(c *gin.Context) {
 	}
 
 	globalIndex, _ := new(big.Int).SetString(globalIndexRaw, 0)
-	claim, err := b.sponsor.GetClaim(globalIndex)
+	claim, err := sponsor.GetClaim(globalIndex)
 	if err != nil {
 		b.logger.Errorf("failed to get claim status for global index %d: %v", globalIndex, err)
 		c.JSON(http.StatusInternalServerError,

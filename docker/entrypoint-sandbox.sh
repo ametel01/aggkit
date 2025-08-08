@@ -166,6 +166,43 @@ MultiGasProvider = false
 L1ChainID = $AGGKIT_L2_CHAIN_ID
 HTTPHeaders = []
 
+[ClaimSponsorReverse]
+DBPath = "/app/data/claimsponsor_reverse.sqlite"
+Enabled = $AGGKIT_CLAIMSPONSOR_ENABLED
+SenderAddr = "$AGGKIT_EVM_SENDER"
+BridgeAddrL2 = "$POLYGON_ZKEVM_BRIDGE_L1"        # we are on L2, so L1 is "remote"
+MaxGas = 3000000
+RetryAfterErrorPeriod = "1s"
+MaxRetryAttemptsAfterError = -1
+WaitTxToBeMinedPeriod = "3s"
+WaitOnEmptyQueue = "3s"
+GasOffset = 0
+ClaimAll = $AGGKIT_CLAIMSPONSOR_CLAIM_ALL
+
+[ClaimSponsorReverse.EthTxManager]
+FrequencyToMonitorTxs = "1s"
+WaitTxToBeMined = "2s"
+GetReceiptMaxTime = "250ms"
+GetReceiptWaitInterval = "1s"
+ForcedGas = 0
+GasPriceMarginFactor = 1
+MaxGasPriceLimit = 0
+StoragePath = "/app/data/ethtxmanager-claimsponsor_reverse.sqlite"
+ReadPendingL1Txs = false
+SafeStatusL1NumberOfBlocks = 5
+FinalizedStatusL1NumberOfBlocks = 10
+
+[ClaimSponsorReverse.EthTxManager.PrivateKeys]
+Method = "local"
+Path = "/tmp/aggoracle.key"
+Password = "testonly"
+
+[ClaimSponsorReverse.EthTxManager.Etherman]
+URL = "$AGGKIT_L1_URL"            # sending to L1!
+MultiGasProvider = false
+L1ChainID = $AGGKIT_L1_CHAIN_ID
+HTTPHeaders = []
+
 [Database]
 Driver = "$AGGKIT_DATABASE_DRIVER"
 Name = "$AGGKIT_DATABASE_NAME"
