@@ -55,7 +55,7 @@ AGGORACLE_PRIVATE_KEY=${AGGORACLE_PRIVATE_KEY:-"0xac0974bec39a17e36ba4a6b4d238ff
 # Function to generate configuration file
 generate_config() {
     echo "Generating configuration file: $AGGKIT_CONFIG_PATH"
-    
+
     # Create private key file for AggOracle (keystore format)
     echo "Creating AggOracle keystore file..."
     # Use the pre-generated keystore for anvil's first account (0xac0974...)
@@ -64,7 +64,7 @@ generate_config() {
 {"address":"f39fd6e51aad88f6f4ce6ab8827279cfffb92266","crypto":{"cipher":"aes-128-ctr","ciphertext":"d005030a7684f3adad2447cbb27f63039eec2224c451eaa445de0d90502b9f3d","cipherparams":{"iv":"dc07a54bc7e388efa89c34d42f2ebdb4"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"cf2ec55ecae11171de575112cfb16963570533a9c46fb774473ceb11519eb24a"},"mac":"3eb180d405a5da6e462b2adc00091c14856c91d574bf27348714506357d6e177"},"id":"035454db-6b6d-477f-8a79-ce24c10b185f","version":3}
 KEYSTORE_EOF
     chmod 600 /tmp/aggoracle.key
-    
+
     cat > "$AGGKIT_CONFIG_PATH" << EOF
 # AggKit Sandbox Configuration - Generated from Environment Variables
 # Generated at: $(date)
@@ -160,7 +160,7 @@ Password = "testonly"
 URL = "$AGGKIT_L2_URL"
 MultiGasProvider = false
 # L1ChainID = 0 indicates it will be set at runtime
-# This field should be populated with L2ChainID 
+# This field should be populated with L2ChainID
 L1ChainID = $AGGKIT_L2_CHAIN_ID
 HTTPHeaders = []
 
@@ -184,7 +184,7 @@ URL = "$AGGKIT_L1_URL"
 ChainID = $AGGKIT_L1_CHAIN_ID
 
 # L2 Network Configuration
-[Networks.L2] 
+[Networks.L2]
 NetworkID = 1
 Name = "L2 AggLayer"
 URL = "$AGGKIT_L2_URL"
@@ -254,7 +254,7 @@ PrivateKey = {Path = "", Password = ""}
 [AggSender.AgglayerClient]
 URL = "http://localhost:8080"
 
-# L1InfoTreeSync configuration  
+# L1InfoTreeSync configuration
 [L1InfoTreeSync]
 DBPath = "/app/data/L1InfoTreeSync.sqlite"
 GlobalExitRootAddr = "$POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L1"
@@ -319,12 +319,14 @@ SupportedNetworks = [0, 1]
 
 [BridgeService.Networks.0]
 Name = "L1 Mainnet"
+NetworkID = 0
 ChainID = $AGGKIT_L1_CHAIN_ID
 BridgeAddr = "$POLYGON_ZKEVM_BRIDGE_L1"
 URL = "$AGGKIT_L1_URL"
 
 [BridgeService.Networks.1]
 Name = "L2 AggLayer"
+NetworkID = 1
 ChainID = $AGGKIT_L2_CHAIN_ID
 BridgeAddr = "$POLYGON_ZKEVM_BRIDGE_L2"
 URL = "$AGGKIT_L2_URL"
@@ -338,9 +340,9 @@ wait_for_dependency() {
     local host=$1
     local port=$2
     local service=$3
-    
+
     echo "Waiting for $service at $host:$port..."
-    
+
     for i in {1..30}; do
         if curl -s "$host:$port" >/dev/null 2>&1; then
             echo "$service is ready!"
@@ -349,7 +351,7 @@ wait_for_dependency() {
         echo "Waiting for $service... ($i/30)"
         sleep 2
     done
-    
+
     echo "Warning: $service at $host:$port is not responding after 60 seconds"
     return 1
 }
@@ -357,22 +359,22 @@ wait_for_dependency() {
 # Function to validate configuration
 validate_config() {
     echo "Validating configuration..."
-    
+
     if [[ "$AGGKIT_L1_CHAIN_ID" == "$AGGKIT_L2_CHAIN_ID" ]]; then
         echo "Error: L1 and L2 chain IDs must be different"
         exit 1
     fi
-    
+
     if [[ "$AGGKIT_SANDBOX_ENABLED" != "true" ]]; then
         echo "Error: This image only supports sandbox mode (AGGKIT_SANDBOX_ENABLED=true)"
         exit 1
     fi
-    
+
     if [[ "$POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2" == "0x0000000000000000000000000000000000000000" ]]; then
         echo "Warning: POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2 is not set. AggOracle will fail to start."
         echo "Please deploy a GlobalExitRootManagerL2SovereignChain contract and set this environment variable."
     fi
-    
+
     echo "Configuration validation passed!"
 }
 
@@ -391,14 +393,14 @@ main() {
     echo "  POLYGON_ZKEVM_BRIDGE_L2: $POLYGON_ZKEVM_BRIDGE_L2"
     echo "  POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2: $POLYGON_ZKEVM_GLOBAL_EXIT_ROOT_L2"
     echo ""
-    
+
     # Debug information
     echo "Debug: Current user: $(whoami)"
     echo "Debug: Config path: $AGGKIT_CONFIG_PATH"
-    
+
     # Validate configuration
     validate_config
-    
+
     # Check if custom config is provided
     if [[ -f "/app/config/custom.toml" ]]; then
         echo "Using custom configuration file: /app/config/custom.toml"
@@ -407,29 +409,29 @@ main() {
         # Generate configuration from environment variables
         generate_config
     fi
-    
+
     # Wait for L1 node if specified
     if [[ "$AGGKIT_WAIT_FOR_L1" == "true" ]]; then
         L1_HOST=$(echo "$AGGKIT_L1_URL" | sed 's|http://||' | sed 's|:.*||')
         L1_PORT=$(echo "$AGGKIT_L1_URL" | sed 's|.*:||' | sed 's|/.*||')
         wait_for_dependency "$L1_HOST" "$L1_PORT" "L1 Node"
     fi
-    
+
     # Wait for L2 node if specified
     if [[ "$AGGKIT_WAIT_FOR_L2" == "true" ]]; then
         L2_HOST=$(echo "$AGGKIT_L2_URL" | sed 's|http://||' | sed 's|:.*||')
         L2_PORT=$(echo "$AGGKIT_L2_URL" | sed 's|.*:||' | sed 's|/.*||')
         wait_for_dependency "$L2_HOST" "$L2_PORT" "L2 Node"
     fi
-    
+
     # Create data directory if needed
     mkdir -p /app/data /app/logs
-    
+
     echo "Starting AggKit Sandbox..."
     echo "Configuration file: $AGGKIT_CONFIG_PATH"
     echo "Components: $AGGKIT_COMPONENTS"
     echo ""
-    
+
     # Execute AggKit with the generated configuration
     exec /app/aggkit-sandbox "$@" \
         --cfg="$AGGKIT_CONFIG_PATH" \
@@ -437,4 +439,4 @@ main() {
 }
 
 # Run main function
-main "$@" 
+main "$@"
