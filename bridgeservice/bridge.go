@@ -84,7 +84,8 @@ type BridgeService struct {
 	readTimeout   time.Duration
 	writeTimeout  time.Duration
 	networkID     uint32
-	sponsor       ClaimSponsorer
+	sponsorFwd    ClaimSponsorer
+	sponsorRev    ClaimSponsorer
 	l1InfoTree    L1InfoTreer
 	injectedGERs  LastGERer
 	bridgeL1      Bridger
@@ -97,7 +98,8 @@ type BridgeService struct {
 // New returns instance of BridgeService
 func New(
 	cfg *Config,
-	sponsor ClaimSponsorer,
+	sponsorFwd ClaimSponsorer,
+	sponsorRev ClaimSponsorer,
 	l1InfoTree L1InfoTreer,
 	injectedGERs LastGERer,
 	bridgeL1 Bridger,
@@ -135,7 +137,8 @@ func New(
 		readTimeout:   cfg.ReadTimeout,
 		writeTimeout:  cfg.WriteTimeout,
 		networkID:     cfg.NetworkID,
-		sponsor:       sponsor,
+		sponsorFwd:    sponsorFwd,
+		sponsorRev:    sponsorRev,
 		l1InfoTree:    l1InfoTree,
 		injectedGERs:  injectedGERs,
 		bridgeL1:      bridgeL1,
@@ -144,6 +147,7 @@ func New(
 		router:        router,
 	}
 
+	log.Infof("Bridge service created with network ID: %d", cfg.NetworkID)
 	b.registerRoutes()
 	cfg.Logger.Info("bridge service initialized successfully")
 
@@ -464,9 +468,9 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 	// Get pending claims from all bridge databases where destination_network matches
 	// We need to check both L1 and L2 bridge databases for pending claims targeting this network
 	// Use network ID directly as requested
-	
+
 	b.logger.Debugf("Looking for pending claims targeting network ID %d", networkID)
-	
+
 	var allPendingBridges []*bridgesync.Bridge
 	var totalPendingCount int
 
@@ -497,15 +501,15 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 
 	// Combine completed and pending claims
 	var claimResponses []*types.ClaimResponse
-	
+
 	// Add completed claims
 	completedResponses := aggkitcommon.MapSlice(completedClaims, NewClaimResponse)
 	claimResponses = append(claimResponses, completedResponses...)
-	
+
 	// Add pending claims
 	pendingResponses := aggkitcommon.MapSlice(pendingBridges, NewPendingClaimResponse)
 	claimResponses = append(claimResponses, pendingResponses...)
-	
+
 	totalCount := completedCount + pendingCount
 
 	result := types.ClaimsResult{
@@ -995,21 +999,18 @@ func (b *BridgeService) SponsorClaimHandler(c *gin.Context) {
 	}
 	cnt.Add(ctx, 1)
 
-	if b.sponsor == nil {
+	sponsor := b.sponsorFwd
+	if claim.DestinationNetwork == mainnetNetworkID {
+		sponsor = b.sponsorRev
+	}
+
+	if sponsor == nil {
 		b.logger.Warn("claim sponsoring not supported by this client")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "this client does not support claim sponsoring"})
 		return
 	}
 
-	if claim.DestinationNetwork != b.networkID {
-		b.logger.Warnf("invalid destination network %d (expected %d)", claim.DestinationNetwork, b.networkID)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("this client only sponsors claims for destination network %d", b.networkID),
-		})
-		return
-	}
-
-	if err := b.sponsor.AddClaimToQueue(&claim); err != nil {
+	if err := sponsor.AddClaimToQueue(&claim); err != nil {
 		b.logger.Errorf("failed to add claim to queue: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add claim to queue: " + err.Error()})
 		return
@@ -1026,6 +1027,7 @@ func (b *BridgeService) SponsorClaimHandler(c *gin.Context) {
 // Only available if claim sponsoring is enabled.
 // @Tags claim-sponsoring
 // @Param global_index query string true "Global index of the claim (big.Int format)"
+// @Param network_id query uint32 true "Origin network ID"
 // @Produce json
 // @Success 200 {object} string "Claim sponsorship status"
 // @Failure 400 {object} types.ErrorResponse "Bad Request"
@@ -1034,7 +1036,14 @@ func (b *BridgeService) SponsorClaimHandler(c *gin.Context) {
 func (b *BridgeService) GetSponsoredClaimStatusHandler(c *gin.Context) {
 	globalIndexRaw := c.Query(globalIndexParam)
 
-	b.logger.Debugf("GetSponsoredClaimStatus request received (claim global index=%s)", globalIndexRaw)
+	networkID, err := parseUintQuery(c, networkIDParam, true, uint32(0))
+	if err != nil {
+		b.logger.Warnf(errNetworkID, err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	b.logger.Debugf("GetSponsoredClaimStatus request received (claim global index=%s, origin network=%d)", globalIndexRaw, networkID)
 	ctx, cancel := context.WithTimeout(c, b.readTimeout)
 	defer cancel()
 
@@ -1044,7 +1053,11 @@ func (b *BridgeService) GetSponsoredClaimStatusHandler(c *gin.Context) {
 	}
 	cnt.Add(ctx, 1)
 
-	if b.sponsor == nil {
+	sponsor := b.sponsorFwd
+	if networkID == mainnetNetworkID {
+		sponsor = b.sponsorRev
+	}
+	if sponsor == nil {
 		b.logger.Warn("claim sponsoring not supported by this client")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "this client does not support claim sponsoring"})
 		return
@@ -1057,7 +1070,7 @@ func (b *BridgeService) GetSponsoredClaimStatusHandler(c *gin.Context) {
 	}
 
 	globalIndex, _ := new(big.Int).SetString(globalIndexRaw, 0)
-	claim, err := b.sponsor.GetClaim(globalIndex)
+	claim, err := sponsor.GetClaim(globalIndex)
 	if err != nil {
 		b.logger.Errorf("failed to get claim status for global index %d: %v", globalIndex, err)
 		c.JSON(http.StatusInternalServerError,
@@ -1258,7 +1271,7 @@ func (b *BridgeService) getFirstL1InfoTreeIndexForL2Bridge(ctx context.Context, 
 	// (produced by the smart contract call verifyBatches / verifyBatchesTrustedAggregator)
 	// are included in the L1 info tree. As per the current implementation (smart contracts) of the protocol
 	// this is true. This could change in the future
-	
+
 	// In sandbox mode, if verified batches are not available, return a default L1 info tree index
 	if b.isSandboxMode() {
 		_, err := b.l1InfoTree.GetLastVerifiedBatches(b.networkID)
@@ -1272,7 +1285,7 @@ func (b *BridgeService) getFirstL1InfoTreeIndexForL2Bridge(ctx context.Context, 
 		}
 		// If verified batches exist in sandbox mode, continue with normal processing
 	}
-	
+
 	lastVerified, err := b.l1InfoTree.GetLastVerifiedBatches(b.networkID)
 	if err != nil {
 		return 0, err
@@ -1366,16 +1379,15 @@ func (b *BridgeService) createSandboxMetadata() *types.SandboxMetadata {
 	}
 
 	// Build list of supported L2 networks
-	primaryL2ChainID := uint32(b.sandboxConfig.L2Node.ChainID)
-	supportedL2Networks := []uint32{primaryL2ChainID}
-	
+	supportedL2Networks := []uint32{}
+
 	// Add other valid L2 network IDs that the bridge service supports
 	for networkID := uint32(1); networkID <= 3; networkID++ {
-		if networkID != primaryL2ChainID && b.isValidL2NetworkID(networkID) {
+		if b.isValidL2NetworkID(networkID) {
 			supportedL2Networks = append(supportedL2Networks, networkID)
 		}
 	}
-	
+
 	return &types.SandboxMetadata{
 		SandboxMode:      true,
 		AutoSettle:       b.sandboxConfig.AutoSettle,
@@ -1384,11 +1396,11 @@ func (b *BridgeService) createSandboxMetadata() *types.SandboxMetadata {
 		SettlementDelay:  b.sandboxConfig.SettlementDelay.String(),
 		GeneratedAt:      time.Now().Unix(),
 		DevMetadata: map[string]interface{}{
-			"bridge_mode": "sandbox",
-			"l1_chain_id": b.sandboxConfig.L1Node.ChainID,
-			"l2_chain_id": b.sandboxConfig.L2Node.ChainID, // Primary L2
-			"supported_l2_networks": supportedL2Networks, // All supported L2s
-			"multi_l2_enabled": len(supportedL2Networks) > 1,
+			"bridge_mode":           "sandbox",
+			"l1_chain_id":           b.sandboxConfig.L1Node.ChainID,
+			"l2_chain_id":           b.sandboxConfig.L2Node.ChainID, // Primary L2
+			"supported_l2_networks": supportedL2Networks,            // All supported L2s
+			"multi_l2_enabled":      len(supportedL2Networks) > 1,
 		},
 	}
 }
@@ -1438,8 +1450,6 @@ func (b *BridgeService) enhanceClaimProofWithSandbox(claimProof *types.ClaimProo
 func (b *BridgeService) isClaimInstantlyReady() bool {
 	return b.isSandboxMode() && b.sandboxConfig.InstantClaims
 }
-
-
 
 // isValidL2NetworkID validates if a network ID is a valid L2 network ID
 // For multi-L2 scenarios, this allows network IDs 1-3 for L2 chains, and 31337-31339 for local development

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/agglayer/aggkit/bridgesync"
 	"github.com/agglayer/aggkit/claimsponsor"
+	aggkitcommon "github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/log"
 	"github.com/agglayer/aggkit/test/helpers"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -35,6 +35,7 @@ func TestE2EL1toEVML2(t *testing.T) {
 		0,
 		setup.EthTxManagerMock,
 		0, 0, time.Millisecond*10, time.Millisecond*10,
+		nil,
 	)
 	require.NoError(t, err)
 	go claimer.Start(ctx)
@@ -60,7 +61,7 @@ func TestE2EL1toEVML2(t *testing.T) {
 		require.NoError(t, err)
 
 		// Request to sponsor claim
-		globalIndex := bridgesync.GenerateGlobalIndex(true, 0, i)
+		globalIndex := aggkitcommon.GenerateGlobalIndex(true, 0, i)
 		err = claimer.AddClaimToQueue(&claimsponsor.Claim{
 			LeafType:           claimsponsor.LeafTypeAsset,
 			GlobalIndex:        globalIndex,

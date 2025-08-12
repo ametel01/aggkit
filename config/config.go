@@ -212,8 +212,11 @@ type Config struct {
 	// Configuration of the L1 Info Treee Sync service
 	L1InfoTreeSync l1infotreesync.Config
 
-	// ClaimSponsor is the config for the claim sponsor
+	// ClaimSponsor is the config for the claim sponsor L1 -> L2
 	ClaimSponsor claimsponsor.EVMClaimSponsorConfig
+
+	// ClaimSponsorReverse is the config for the claim sponsor L2 -> L1
+	ClaimSponsorReverse claimsponsor.EVMClaimSponsorConfig
 
 	// BridgeL1Sync is the configuration for the synchronizer of the bridge of the L1
 	BridgeL1Sync bridgesync.Config

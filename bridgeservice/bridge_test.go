@@ -64,7 +64,7 @@ func newBridgeWithMocks(t *testing.T, networkID uint32) bridgeWithMocks {
 		WriteTimeout: 0,
 		NetworkID:    networkID,
 	}
-	b.bridge = New(cfg, b.sponsor, b.l1InfoTree, b.injectedGERs, b.bridgeL1, b.bridgeL2)
+	b.bridge = New(cfg, b.sponsor, b.sponsor, b.l1InfoTree, b.injectedGERs, b.bridgeL1, b.bridgeL2)
 	return b
 }
 
@@ -641,13 +641,13 @@ func TestGetClaimsHandler(t *testing.T) {
 		bridgeMocks.bridgeL1.EXPECT().
 			GetClaimsPaged(mock.Anything, page, pageSize, mock.Anything, mock.Anything).
 			Return(expectedClaims, len(expectedClaims), nil)
-		
+
 		// Mock pending claims from L1 bridge database (empty for this test)
 		// mainnetNetworkID (0) maps to chain ID 1
 		bridgeMocks.bridgeL1.EXPECT().
 			GetPendingClaimsPaged(mock.Anything, page, pageSize, []uint32{1}, mock.Anything).
 			Return([]*bridgesync.Bridge{}, 0, nil)
-		
+
 		// Mock pending claims from L2 bridge database (empty for this test)
 		bridgeMocks.bridgeL2.EXPECT().
 			GetPendingClaimsPaged(mock.Anything, page, pageSize, []uint32{1}, mock.Anything).
@@ -693,14 +693,14 @@ func TestGetClaimsHandler(t *testing.T) {
 		bridgeMocks.bridgeL2.EXPECT().
 			GetClaimsPaged(mock.Anything, page, pageSize, mock.Anything, mock.Anything).
 			Return(expectedClaims, len(expectedClaims), nil)
-		
+
 		// Mock pending claims from L1 bridge database (empty for this test)
 		// Network ID 10 maps to chain ID 1101 (in default mapping)
 		bridgeMocks.bridgeL1.EXPECT().
 			GetPendingClaimsPaged(mock.Anything, page, pageSize, []uint32{10}, mock.Anything).
 			Return([]*bridgesync.Bridge{}, 0, nil)
-		
-		// Mock pending claims from L2 bridge database (empty for this test) 
+
+		// Mock pending claims from L2 bridge database (empty for this test)
 		bridgeMocks.bridgeL2.EXPECT().
 			GetPendingClaimsPaged(mock.Anything, page, pageSize, []uint32{10}, mock.Anything).
 			Return([]*bridgesync.Bridge{}, 0, nil)
@@ -739,7 +739,7 @@ func TestGetClaimsHandler(t *testing.T) {
 			Return(nil, 0, errors.New(fooErrMsg))
 
 		query := url.Values{}
-		query.Set(networkIDParam, "0")  // Use L1 mainnet network ID
+		query.Set(networkIDParam, "0") // Use L1 mainnet network ID
 		query.Set(pageNumberParam, "1")
 		query.Set(pageSizeParam, "10")
 
@@ -1707,10 +1707,11 @@ func TestGetLastReorgEventHandler(t *testing.T) {
 func TestGetSponsoredClaimStatusHandler(t *testing.T) {
 	t.Run("Client does not support sponsored claims", func(t *testing.T) {
 		bridgeMocks := newBridgeWithMocks(t, l2NetworkID)
-		bridgeMocks.bridge.sponsor = nil
+		bridgeMocks.bridge.sponsorFwd = nil
 
 		queryParams := url.Values{
 			globalIndexParam: []string{"1"},
+			networkIDParam:   []string{"0"},
 		}
 
 		response := performRequest(t, bridgeMocks.bridge.router, http.MethodGet, fmt.Sprintf("%s/sponsored-claim-status?%s", BridgeV1Prefix, queryParams.Encode()), nil)
@@ -1735,6 +1736,7 @@ func TestGetSponsoredClaimStatusHandler(t *testing.T) {
 
 		queryParams := url.Values{
 			globalIndexParam: []string{"1"},
+			networkIDParam:   []string{"0"},
 		}
 
 		response := performRequest(t, bridgeMocks.bridge.router, http.MethodGet, fmt.Sprintf("%s/sponsored-claim-status?%s", BridgeV1Prefix, queryParams.Encode()), nil)
@@ -1754,6 +1756,7 @@ func TestGetSponsoredClaimStatusHandler(t *testing.T) {
 
 		queryParams := url.Values{
 			globalIndexParam: []string{"1"},
+			networkIDParam:   []string{"0"},
 		}
 
 		response := performRequest(t, bridgeMocks.bridge.router, http.MethodGet, fmt.Sprintf("%s/sponsored-claim-status?%s", BridgeV1Prefix, queryParams.Encode()), nil)
@@ -1769,7 +1772,7 @@ func TestGetSponsoredClaimStatusHandler(t *testing.T) {
 func TestSponsorClaimHandler(t *testing.T) {
 	t.Run("Client does not support sponsored claims", func(t *testing.T) {
 		bridgeMocks := newBridgeWithMocks(t, l2NetworkID)
-		bridgeMocks.bridge.sponsor = nil
+		bridgeMocks.bridge.sponsorFwd = nil
 
 		claim := claimsponsor.Claim{
 			GlobalIndex:        common.Big1,

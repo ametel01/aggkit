@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/agglayer/aggkit/bridgesync"
 	aggkitcommon "github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/tree/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -453,7 +452,7 @@ func (g *GlobalIndex) String() string {
 func (g *GlobalIndex) Hash() common.Hash {
 	return crypto.Keccak256Hash(
 		aggkitcommon.BigIntToLittleEndianBytes(
-			bridgesync.GenerateGlobalIndex(g.MainnetFlag, g.RollupIndex, g.LeafIndex),
+			aggkitcommon.GenerateGlobalIndex(g.MainnetFlag, g.RollupIndex, g.LeafIndex),
 		),
 	)
 }
@@ -928,7 +927,7 @@ func (c *ImportedBridgeExit) Hash() common.Hash {
 // GlobalIndexToLittleEndianBytes converts the global index to a byte slice in little-endian format
 func (c *ImportedBridgeExit) GlobalIndexToLittleEndianBytes() []byte {
 	return aggkitcommon.BigIntToLittleEndianBytes(
-		bridgesync.GenerateGlobalIndex(
+		aggkitcommon.GenerateGlobalIndex(
 			c.GlobalIndex.MainnetFlag,
 			c.GlobalIndex.RollupIndex,
 			c.GlobalIndex.LeafIndex,

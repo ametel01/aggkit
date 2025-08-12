@@ -7,6 +7,7 @@ import (
 
 	bridgetypes "github.com/agglayer/aggkit/bridgeservice/types"
 	"github.com/agglayer/aggkit/bridgesync"
+	"github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/l1infotreesync"
 	"github.com/gin-gonic/gin"
 )
@@ -91,25 +92,6 @@ func parseUint32SliceParam(c *gin.Context, key string) ([]uint32, error) {
 	return result, nil
 }
 
-// chainIDToNetworkID converts chain ID back to network ID for API responses
-// This ensures consistent network ID usage in API responses regardless of what's stored in database
-func chainIDToNetworkID(chainID uint32) uint32 {
-	switch chainID {
-	case 1:
-		return 0 // Ethereum mainnet
-	case 1101:
-		return 1 // Polygon zkEVM L2
-	case 137:
-		return 2 // Polygon
-	case 8453:
-		return 3 // Base
-	default:
-		// For unknown chain IDs or if it's already a network ID, return as-is
-		// This handles cases where the database already contains network IDs
-		return chainID
-	}
-}
-
 // NewBridgeResponse creates a new BridgeResponse instance out of the provided Bridge instance
 func NewBridgeResponse(bridge *bridgesync.Bridge) *bridgetypes.BridgeResponse {
 	return &bridgetypes.BridgeResponse{
@@ -141,7 +123,7 @@ func NewClaimResponse(claim *bridgesync.Claim) *bridgetypes.ClaimResponse {
 
 	return &bridgetypes.ClaimResponse{
 		GlobalIndex:        bridgetypes.BigIntString(claim.GlobalIndex.String()),
-		DestinationNetwork: chainIDToNetworkID(claim.DestinationNetwork),
+		DestinationNetwork: claim.DestinationNetwork,
 		TxHash:             bridgetypes.Hash(claim.TxHash.Hex()),
 		Amount:             bridgetypes.BigIntString(claim.Amount.String()),
 		BlockNum:           claim.BlockNum,
@@ -171,7 +153,7 @@ func NewPendingClaimResponse(bridge *bridgesync.Bridge) *bridgetypes.ClaimRespon
 	if mainnetFlag {
 		rollupIndex = 0
 	}
-	globalIndex := bridgesync.GenerateGlobalIndex(mainnetFlag, rollupIndex, bridge.DepositCount)
+	globalIndex := common.GenerateGlobalIndex(mainnetFlag, rollupIndex, bridge.DepositCount)
 
 	return &bridgetypes.ClaimResponse{
 		GlobalIndex:        bridgetypes.BigIntString(globalIndex.String()),

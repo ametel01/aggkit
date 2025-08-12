@@ -12,6 +12,7 @@ import (
 	"github.com/agglayer/aggkit/aggsender/mocks"
 	"github.com/agglayer/aggkit/aggsender/types"
 	"github.com/agglayer/aggkit/bridgesync"
+	aggkitcommon "github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/l1infotreesync"
 	"github.com/agglayer/aggkit/log"
 	treetypes "github.com/agglayer/aggkit/tree/types"
@@ -244,7 +245,7 @@ func TestGetImportedBridgeExits(t *testing.T) {
 					DestinationAddress:  common.HexToAddress("0x4567"),
 					Amount:              big.NewInt(111),
 					Metadata:            []byte("metadata1"),
-					GlobalIndex:         bridgesync.GenerateGlobalIndex(false, 1, 1),
+					GlobalIndex:         aggkitcommon.GenerateGlobalIndex(false, 1, 1),
 					GlobalExitRoot:      common.HexToHash("0x7891"),
 					RollupExitRoot:      common.HexToHash("0xaaab"),
 					MainnetExitRoot:     common.HexToHash("0xbbba"),
@@ -333,7 +334,7 @@ func TestGetImportedBridgeExits(t *testing.T) {
 					DestinationAddress:  common.HexToAddress("0xabc"),
 					Amount:              big.NewInt(200),
 					Metadata:            []byte("data"),
-					GlobalIndex:         bridgesync.GenerateGlobalIndex(true, 0, 2),
+					GlobalIndex:         aggkitcommon.GenerateGlobalIndex(true, 0, 2),
 					GlobalExitRoot:      common.HexToHash("0x7891"),
 					RollupExitRoot:      common.HexToHash("0xbbb"),
 					MainnetExitRoot:     common.HexToHash("0xccc"),

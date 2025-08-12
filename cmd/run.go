@@ -93,11 +93,18 @@ func start(cliCtx *cli.Context) error {
 	}
 
 	l1InfoTreeSync := runL1InfoTreeSyncerIfNeeded(cliCtx.Context, components, *cfg, l1Client, reorgDetectorL1)
-	claimSponsor := runClaimSponsorIfNeeded(cliCtx.Context, components, l2Client, cfg.ClaimSponsor)
+	claimSponsorFwd := runClaimSponsorIfNeeded(cliCtx.Context, components, l2Client, cfg.ClaimSponsor, l1InfoTreeSync)
+	claimSponsorRev := runClaimSponsorIfNeeded(cliCtx.Context, components, l1Client, cfg.ClaimSponsorReverse, l1InfoTreeSync)
+	var autosponsorL1, autosponsorL2 bridgesync.ClaimEnqueuer
+	if cfg.ClaimSponsor.ClaimAll {
+		autosponsorL1 = claimSponsorFwd
+		autosponsorL2 = claimSponsorRev
+	}
+
 	l1BridgeSync := runBridgeSyncL1IfNeeded(cliCtx.Context, components, cfg.BridgeL1Sync, reorgDetectorL1,
-		l1Client, 0)
+		l1Client, 0, autosponsorL1, cfg.Common.NetworkID)
 	l2BridgeSync := runBridgeSyncL2IfNeeded(cliCtx.Context, components, cfg.BridgeL2Sync, reorgDetectorL2,
-		l2Client, rollupDataQuerier.RollupID)
+		l2Client, rollupDataQuerier.RollupID, autosponsorL2, 0)
 	lastGERSync := runLastGERSyncIfNeeded(
 		cliCtx.Context, components, cfg.LastGERSync, reorgDetectorL2, l2Client, l1InfoTreeSync,
 	)
@@ -127,7 +134,8 @@ func start(cliCtx *cli.Context) error {
 			b := createBridgeService(
 				cfg.REST,
 				cfg.Common.NetworkID,
-				claimSponsor,
+				claimSponsorFwd,
+				claimSponsorRev,
 				l1InfoTreeSync,
 				lastGERSync,
 				l1BridgeSync,
@@ -553,6 +561,7 @@ func runClaimSponsorIfNeeded(
 	components []string,
 	l2Client aggkittypes.BaseEthereumClienter,
 	cfg claimsponsor.EVMClaimSponsorConfig,
+	l1InfoTree *l1infotreesync.L1InfoTreeSync,
 ) *claimsponsor.ClaimSponsor {
 	if !isNeeded([]string{aggkitcommon.BRIDGE}, components) || !cfg.Enabled {
 		log.Info("ClaimSponsor is not enabled")
@@ -580,6 +589,7 @@ func runClaimSponsorIfNeeded(
 		cfg.MaxRetryAttemptsAfterError,
 		cfg.WaitTxToBeMinedPeriod.Duration,
 		cfg.WaitTxToBeMinedPeriod.Duration,
+		l1InfoTree,
 	)
 	if err != nil {
 		logger.Fatalf("error creating claim sponsor: %s", err)
@@ -636,6 +646,8 @@ func runBridgeSyncL1IfNeeded(
 	reorgDetectorL1 *reorgdetector.ReorgDetector,
 	l1Client aggkittypes.EthClienter,
 	rollupID uint32,
+	autosponsor bridgesync.ClaimEnqueuer,
+	networkID uint32,
 ) *bridgesync.BridgeSync {
 	if !isNeeded([]string{aggkitcommon.BRIDGE}, components) {
 		return nil
@@ -656,6 +668,8 @@ func runBridgeSyncL1IfNeeded(
 		rollupID,
 		true,
 		cfg.RequireStorageContentCompatibility,
+		autosponsor,
+		networkID,
 	)
 	if err != nil {
 		log.Fatalf("error creating bridgeSyncL1: %s", err)
@@ -672,6 +686,8 @@ func runBridgeSyncL2IfNeeded(
 	reorgDetectorL2 *reorgdetector.ReorgDetector,
 	l2Client aggkittypes.EthClienter,
 	rollupID uint32,
+	autosponsor bridgesync.ClaimEnqueuer,
+	networkID uint32,
 ) *bridgesync.BridgeSync {
 	if !isNeeded([]string{
 		aggkitcommon.BRIDGE,
@@ -695,6 +711,8 @@ func runBridgeSyncL2IfNeeded(
 		rollupID,
 		true,
 		cfg.RequireStorageContentCompatibility,
+		autosponsor,
+		networkID,
 	)
 	if err != nil {
 		log.Fatalf("error creating bridgeSyncL2: %s", err)
@@ -707,7 +725,8 @@ func runBridgeSyncL2IfNeeded(
 func createBridgeService(
 	cfg aggkitcommon.RESTConfig,
 	l2NetworkID uint32,
-	sponsor *claimsponsor.ClaimSponsor,
+	sponsorFwd *claimsponsor.ClaimSponsor,
+	sponsorRev *claimsponsor.ClaimSponsor,
 	l1InfoTree *l1infotreesync.L1InfoTreeSync,
 	injectedGERs *lastgersync.LastGERSync,
 	bridgeL1 *bridgesync.BridgeSync,
@@ -727,7 +746,8 @@ func createBridgeService(
 
 	return bridgeservice.New(
 		bridgeCfg,
-		sponsor,
+		sponsorFwd,
+		sponsorRev,
 		l1InfoTree,
 		injectedGERs,
 		bridgeL1,

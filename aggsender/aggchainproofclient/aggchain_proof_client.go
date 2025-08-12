@@ -8,7 +8,7 @@ import (
 	aggkitProverV1Grpc "buf.build/gen/go/agglayer/provers/grpc/go/aggkit/prover/v1/proverv1grpc"
 	aggkitProverV1Proto "buf.build/gen/go/agglayer/provers/protocolbuffers/go/aggkit/prover/v1"
 	"github.com/agglayer/aggkit/aggsender/types"
-	"github.com/agglayer/aggkit/bridgesync"
+	aggkitcommon "github.com/agglayer/aggkit/common"
 	aggkitgrpc "github.com/agglayer/aggkit/grpc"
 	treetypes "github.com/agglayer/aggkit/tree/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -168,7 +168,7 @@ func convertAggchainProofRequestToGrpcRequest(
 		convertedImportedBridgeExitsWithBlockNumber[i] = &aggkitProverV1Proto.ImportedBridgeExitWithBlockNumber{
 			BlockNumber: importedBridgeExitWithBlockNumber.BlockNumber,
 			GlobalIndex: &agglayerInteropTypesV1Proto.FixedBytes32{
-				Value: common.BigToHash(bridgesync.GenerateGlobalIndex(
+				Value: common.BigToHash(aggkitcommon.GenerateGlobalIndex(
 					importedBridgeExitWithBlockNumber.ImportedBridgeExit.GlobalIndex.MainnetFlag,
 					importedBridgeExitWithBlockNumber.ImportedBridgeExit.GlobalIndex.RollupIndex,
 					importedBridgeExitWithBlockNumber.ImportedBridgeExit.GlobalIndex.LeafIndex,
