@@ -60,3 +60,48 @@ func DecodeGlobalIndex(globalIndex *big.Int) (mainnetFlag bool,
 
 	return
 }
+
+// Network ID to Chain ID mappings
+const (
+	NETWORK_ID_MAINNET    = 0
+	NETWORK_ID_AGGLAYER_1 = 1
+	NETWORK_ID_AGGLAYER_2 = 2
+
+	CHAIN_ID_MAINNET    = 1
+	CHAIN_ID_AGGLAYER_1 = 1101
+	CHAIN_ID_AGGLAYER_2 = 137
+)
+
+// chainIDToNetworkID converts chain ID back to network ID for API responses
+// This ensures consistent network ID usage in API responses regardless of what's stored in database
+func ChainIDToNetworkID(chainID uint32) uint32 {
+	switch chainID {
+	case CHAIN_ID_MAINNET:
+		return NETWORK_ID_MAINNET // Ethereum mainnet
+	case CHAIN_ID_AGGLAYER_1:
+		return NETWORK_ID_AGGLAYER_1 // Polygon zkEVM L2
+	case CHAIN_ID_AGGLAYER_2:
+		return NETWORK_ID_AGGLAYER_2 // Polygon
+	case 8453:
+		return 3 // Base
+	default:
+		// For unknown chain IDs or if it's already a network ID, return as-is
+		// This handles cases where the database already contains network IDs
+		return chainID
+	}
+}
+
+// NetworkIDToChainID converts network ID to chain ID as required by the smart contract
+func NetworkIDToChainID(networkID uint32) uint32 {
+	switch networkID {
+	case NETWORK_ID_MAINNET:
+		return CHAIN_ID_MAINNET
+	case NETWORK_ID_AGGLAYER_1:
+		return CHAIN_ID_AGGLAYER_1
+	case NETWORK_ID_AGGLAYER_2:
+		return CHAIN_ID_AGGLAYER_2
+	default:
+		// Default to networkId value
+		return networkID
+	}
+}

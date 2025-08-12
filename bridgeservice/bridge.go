@@ -84,8 +84,8 @@ type BridgeService struct {
 	readTimeout   time.Duration
 	writeTimeout  time.Duration
 	networkID     uint32
-	sponsorL1     ClaimSponsorer
-	sponsorL2     ClaimSponsorer
+	sponsorFwd    ClaimSponsorer
+	sponsorRev    ClaimSponsorer
 	l1InfoTree    L1InfoTreer
 	injectedGERs  LastGERer
 	bridgeL1      Bridger
@@ -137,8 +137,8 @@ func New(
 		readTimeout:   cfg.ReadTimeout,
 		writeTimeout:  cfg.WriteTimeout,
 		networkID:     cfg.NetworkID,
-		sponsorL1:     sponsorRev,
-		sponsorL2:     sponsorFwd,
+		sponsorFwd:    sponsorFwd,
+		sponsorRev:    sponsorRev,
 		l1InfoTree:    l1InfoTree,
 		injectedGERs:  injectedGERs,
 		bridgeL1:      bridgeL1,
@@ -147,6 +147,7 @@ func New(
 		router:        router,
 	}
 
+	log.Infof("Bridge service created with network ID: %d", cfg.NetworkID)
 	b.registerRoutes()
 	cfg.Logger.Info("bridge service initialized successfully")
 
@@ -998,9 +999,9 @@ func (b *BridgeService) SponsorClaimHandler(c *gin.Context) {
 	}
 	cnt.Add(ctx, 1)
 
-	sponsor := b.sponsorL1
-	if claim.OriginNetwork == 1 {
-		sponsor = b.sponsorL2
+	sponsor := b.sponsorFwd
+	if claim.DestinationNetwork == mainnetNetworkID {
+		sponsor = b.sponsorRev
 	}
 
 	if sponsor == nil {
@@ -1052,9 +1053,9 @@ func (b *BridgeService) GetSponsoredClaimStatusHandler(c *gin.Context) {
 	}
 	cnt.Add(ctx, 1)
 
-	sponsor := b.sponsorL1
+	sponsor := b.sponsorFwd
 	if networkID == mainnetNetworkID {
-		sponsor = b.sponsorL2
+		sponsor = b.sponsorRev
 	}
 	if sponsor == nil {
 		b.logger.Warn("claim sponsoring not supported by this client")
@@ -1378,12 +1379,11 @@ func (b *BridgeService) createSandboxMetadata() *types.SandboxMetadata {
 	}
 
 	// Build list of supported L2 networks
-	primaryL2ChainID := uint32(b.sandboxConfig.L2Node.ChainID)
-	supportedL2Networks := []uint32{primaryL2ChainID}
+	supportedL2Networks := []uint32{}
 
 	// Add other valid L2 network IDs that the bridge service supports
 	for networkID := uint32(1); networkID <= 3; networkID++ {
-		if networkID != primaryL2ChainID && b.isValidL2NetworkID(networkID) {
+		if b.isValidL2NetworkID(networkID) {
 			supportedL2Networks = append(supportedL2Networks, networkID)
 		}
 	}

@@ -144,6 +144,7 @@ func NewEVMClaimSponsor(
 }
 
 func (c *EVMClaimSponsor) checkClaim(ctx context.Context, claim *Claim) (*Claim, error) {
+	// Check for MainnetExitRoot and RollupExitRoot
 	if claimRootsEmpty(claim) {
 		_, _, l1InfoIndex, err := aggkitcommon.DecodeGlobalIndex(claim.GlobalIndex)
 		if err != nil {
@@ -157,6 +158,11 @@ func (c *EVMClaimSponsor) checkClaim(ctx context.Context, claim *Claim) (*Claim,
 		}
 		claim.MainnetExitRoot = roots.MainnetExitRoot
 		claim.RollupExitRoot = roots.RollupExitRoot
+	}
+
+	// TODO: Remove this patch once the inconsistencies between networkID and chainID are solved
+	if claim.DestinationNetwork == 0 {
+		claim.DestinationNetwork = 1
 	}
 
 	data, err := c.buildClaimTxData(claim)

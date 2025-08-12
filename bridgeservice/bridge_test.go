@@ -1707,7 +1707,7 @@ func TestGetLastReorgEventHandler(t *testing.T) {
 func TestGetSponsoredClaimStatusHandler(t *testing.T) {
 	t.Run("Client does not support sponsored claims", func(t *testing.T) {
 		bridgeMocks := newBridgeWithMocks(t, l2NetworkID)
-		bridgeMocks.bridge.sponsorL2 = nil
+		bridgeMocks.bridge.sponsorFwd = nil
 
 		queryParams := url.Values{
 			globalIndexParam: []string{"1"},
@@ -1772,7 +1772,7 @@ func TestGetSponsoredClaimStatusHandler(t *testing.T) {
 func TestSponsorClaimHandler(t *testing.T) {
 	t.Run("Client does not support sponsored claims", func(t *testing.T) {
 		bridgeMocks := newBridgeWithMocks(t, l2NetworkID)
-		bridgeMocks.bridge.sponsorL2 = nil
+		bridgeMocks.bridge.sponsorFwd = nil
 
 		claim := claimsponsor.Claim{
 			GlobalIndex:        common.Big1,

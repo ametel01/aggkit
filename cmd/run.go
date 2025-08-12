@@ -97,14 +97,14 @@ func start(cliCtx *cli.Context) error {
 	claimSponsorRev := runClaimSponsorIfNeeded(cliCtx.Context, components, l1Client, cfg.ClaimSponsorReverse, l1InfoTreeSync)
 	var autosponsorL1, autosponsorL2 bridgesync.ClaimEnqueuer
 	if cfg.ClaimSponsor.ClaimAll {
-		autosponsorL1 = claimSponsorRev
-		autosponsorL2 = claimSponsorFwd
+		autosponsorL1 = claimSponsorFwd
+		autosponsorL2 = claimSponsorRev
 	}
 
 	l1BridgeSync := runBridgeSyncL1IfNeeded(cliCtx.Context, components, cfg.BridgeL1Sync, reorgDetectorL1,
-		l1Client, 0, autosponsorL1, 0)
+		l1Client, 0, autosponsorL1, cfg.Common.NetworkID)
 	l2BridgeSync := runBridgeSyncL2IfNeeded(cliCtx.Context, components, cfg.BridgeL2Sync, reorgDetectorL2,
-		l2Client, rollupDataQuerier.RollupID, autosponsorL2, cfg.Common.NetworkID)
+		l2Client, rollupDataQuerier.RollupID, autosponsorL2, 0)
 	lastGERSync := runLastGERSyncIfNeeded(
 		cliCtx.Context, components, cfg.LastGERSync, reorgDetectorL2, l2Client, l1InfoTreeSync,
 	)
