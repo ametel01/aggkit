@@ -59,10 +59,20 @@ const (
 	methodIDLength = 4
 )
 
-// getDestinationNetwork returns the chain ID as the destination network
+// getDestinationNetwork maps chain ID to network ID for destination network
 func getDestinationNetwork(chainID uint64) uint32 {
-	// For sandbox/multi-L2 setup, destination_network should be the chain ID itself
-	return uint32(chainID)
+	// Map chain IDs to network IDs for multi-L2 setup
+	switch chainID {
+	case 1:    // L1 Ethereum
+		return 0
+	case 1101: // L2 chain ID 
+		return 1
+	case 137:  // L3 chain ID  
+		return 2
+	default:
+		// Fallback: use chain ID as network ID for unknown chains
+		return uint32(chainID)
+	}
 }
 
 func buildAppender(
