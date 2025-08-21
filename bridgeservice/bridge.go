@@ -502,8 +502,13 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 	// Combine completed and pending claims
 	var claimResponses []*types.ClaimResponse
 
-	// Add completed claims
-	completedResponses := aggkitcommon.MapSlice(completedClaims, NewClaimResponse)
+	// Add completed claims with enhanced type detection
+	completedResponses := make([]*types.ClaimResponse, 0, len(completedClaims))
+	for _, claim := range completedClaims {
+		// Use simplified logic based on claim characteristics
+		response := NewClaimResponseWithBridge(claim, nil)
+		completedResponses = append(completedResponses, response)
+	}
 	claimResponses = append(claimResponses, completedResponses...)
 
 	// Add pending claims

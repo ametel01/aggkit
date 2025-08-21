@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
+	"math/big"
 
 	bridgetypes "github.com/agglayer/aggkit/bridgeservice/types"
 	"github.com/agglayer/aggkit/bridgesync"
@@ -116,8 +117,22 @@ func NewBridgeResponse(bridge *bridgesync.Bridge) *bridgetypes.BridgeResponse {
 
 // NewClaimResponse creates ClaimResponse instance out of the provided Claim
 func NewClaimResponse(claim *bridgesync.Claim) *bridgetypes.ClaimResponse {
+	return NewClaimResponseWithBridge(claim, nil)
+}
+
+
+// NewClaimResponseWithBridge creates ClaimResponse instance with optional bridge data for more accurate type detection
+func NewClaimResponseWithBridge(claim *bridgesync.Claim, bridge *bridgesync.Bridge) *bridgetypes.ClaimResponse {
 	claimType := "asset"
-	if claim.IsMessage {
+	
+	// Use the exact same logic as pending claims
+	// Message bridges have amount = 0 and destination = BridgeExtension contract (same as origin)
+	// This matches the pattern used in NewPendingClaimResponse where LeafType == 1
+	zero := big.NewInt(0)
+	if claim.Amount.Cmp(zero) == 0 && claim.DestinationAddress == claim.OriginAddress {
+		claimType = "message"
+	} else if claim.IsMessage {
+		// Fallback to the claim's IsMessage field
 		claimType = "message"
 	}
 
