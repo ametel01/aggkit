@@ -125,15 +125,16 @@ func NewClaimResponse(claim *bridgesync.Claim) *bridgetypes.ClaimResponse {
 func NewClaimResponseWithBridge(claim *bridgesync.Claim, bridge *bridgesync.Bridge) *bridgetypes.ClaimResponse {
 	claimType := "asset"
 	
-	// Use the exact same logic as pending claims
-	// Message bridges have amount = 0 and destination = BridgeExtension contract (same as origin)
-	// This matches the pattern used in NewPendingClaimResponse where LeafType == 1
-	zero := big.NewInt(0)
-	if claim.Amount.Cmp(zero) == 0 && claim.DestinationAddress == claim.OriginAddress {
+	// Primary check: Use the IsMessage field which is set correctly during claim processing
+	if claim.IsMessage {
 		claimType = "message"
-	} else if claim.IsMessage {
-		// Fallback to the claim's IsMessage field
-		claimType = "message"
+	} else {
+		// Fallback heuristic for backward compatibility: 
+		// Message bridges typically have amount = 0 and destination = BridgeExtension contract (same as origin)
+		zero := big.NewInt(0)
+		if claim.Amount.Cmp(zero) == 0 && claim.DestinationAddress == claim.OriginAddress {
+			claimType = "message"
+		}
 	}
 
 	return &bridgetypes.ClaimResponse{

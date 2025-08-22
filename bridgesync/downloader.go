@@ -41,8 +41,8 @@ var (
 		"RemoveLegacySovereignTokenAddress(address)",
 	))
 
-	claimAssetEtrogMethodID      = common.Hex2Bytes("ccaa2d11")
-	claimMessageEtrogMethodID    = common.Hex2Bytes("f5efcd79")
+	claimAssetEtrogMethodID      = common.Hex2Bytes("1b260e3b")
+	claimMessageEtrogMethodID    = common.Hex2Bytes("af837c76")
 	claimAssetPreEtrogMethodID   = common.Hex2Bytes("2cffd02e")
 	claimMessagePreEtrogMethodID = common.Hex2Bytes("2d2c9d94")
 	zeroAddress                  = common.HexToAddress("0x0")
@@ -503,7 +503,17 @@ func (c *Claim) tryDecodeClaimCalldata(senderAddr common.Address, input []byte) 
 		// Recover Method from signature and ABI
 		method, err := bridgeV2ABI.MethodById(methodID)
 		if err != nil {
-			return false, err
+			// Handle case where method ID doesn't exist in ABI
+			// This can happen when contract method signatures don't match Go bindings
+			// We'll try to decode manually using the known signature parameters
+			found, err := c.decodeEtrogCalldataManual(senderAddr, input[methodIDLength:])
+			if err != nil {
+				return false, fmt.Errorf("failed to manually decode calldata for method 0x%x: %w", methodID, err)
+			}
+			if found {
+				c.IsMessage = bytes.Equal(methodID, claimMessageEtrogMethodID)
+			}
+			return found, nil
 		}
 
 		data, err := method.Inputs.Unpack(input[methodIDLength:])

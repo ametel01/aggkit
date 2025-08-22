@@ -125,6 +125,51 @@ type Claim struct {
 	BlockTimestamp      uint64         `meddler:"block_timestamp"`
 }
 
+// decodeEtrogCalldataManual manually decodes claim calldata when ABI method lookup fails
+// This handles cases where the Go bindings don't match the actual contract methods
+func (c *Claim) decodeEtrogCalldataManual(senderAddr common.Address, inputData []byte) (bool, error) {
+	// Manual ABI decoding for claimAsset/claimMessage signature:
+	// claimAsset/claimMessage(uint256,bytes32,bytes32,uint32,address,uint32,address,uint256,bytes)
+	// This requires 9 parameters of specific types
+	
+	// Expected parameter sizes (in bytes):
+	// uint256: 32, bytes32: 32, bytes32: 32, uint32: 32, address: 32, uint32: 32, address: 32, uint256: 32, bytes: variable
+	
+	if len(inputData) < 32*8 { // At least 8 fixed parameters * 32 bytes each
+		return false, fmt.Errorf("input data too short for manual decode: %d bytes", len(inputData))
+	}
+	
+	// Parse globalIndex (first parameter)
+	globalIndexBytes := inputData[0:32]
+	actualGlobalIndex := new(big.Int).SetBytes(globalIndexBytes)
+	
+	if actualGlobalIndex.Cmp(c.GlobalIndex) != 0 {
+		// not the claim we're looking for
+		return false, nil
+	}
+	
+	// Parse mainnetExitRoot (second parameter)
+	var mainnetExitRoot [32]byte
+	copy(mainnetExitRoot[:], inputData[32:64])
+	c.MainnetExitRoot = mainnetExitRoot
+	
+	// Parse rollupExitRoot (third parameter) 
+	var rollupExitRoot [32]byte
+	copy(rollupExitRoot[:], inputData[64:96])
+	c.RollupExitRoot = rollupExitRoot
+	
+	// Parse destinationNetwork (sixth parameter, skipping originNetwork and originAddress)
+	destinationNetworkBytes := inputData[160:192]
+	destinationNetwork := new(big.Int).SetBytes(destinationNetworkBytes).Uint64()
+	c.DestinationNetwork = uint32(destinationNetwork)
+	
+	// Calculate global exit root
+	c.GlobalExitRoot = crypto.Keccak256Hash(c.MainnetExitRoot.Bytes(), c.RollupExitRoot.Bytes())
+	c.FromAddress = senderAddr
+	
+	return true, nil
+}
+
 // decodeEtrogCalldata decodes claim calldata for Etrog fork
 func (c *Claim) decodeEtrogCalldata(senderAddr common.Address, data []any) (bool, error) {
 	// Unpack method inputs. Note that both claimAsset and claimMessage have the same interface
