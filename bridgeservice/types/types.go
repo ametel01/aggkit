@@ -108,8 +108,8 @@ type BridgeResponse struct {
 	// Address that initiated the bridge transaction
 	FromAddress Address `json:"from_address" example:"0xabc1234567890abcdef1234567890abcdef1234"`
 
-	// Hash of the transaction that included the bridge event
-	TxHash Hash `json:"tx_hash" example:"0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"`
+	// Hash of the bridge transaction
+	BridgeTxHash Hash `json:"bridge_tx_hash" example:"0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"`
 
 	// Raw calldata submitted in the transaction
 	Calldata string `json:"calldata" example:"deadbeef"`
@@ -173,8 +173,11 @@ type ClaimResponse struct {
 	// Timestamp of the block containing the claim
 	BlockTimestamp uint64 `json:"block_timestamp" example:"1684500000"`
 
-	// Transaction hash associated with the claim
-	TxHash Hash `json:"tx_hash" example:"0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"`
+	// Transaction hash of the original bridge transaction
+	BridgeTxHash Hash `json:"bridge_tx_hash" example:"0xabc4567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"`
+
+	// Transaction hash of the claim transaction (empty for pending claims)
+	ClaimTxHash Hash `json:"claim_tx_hash" example:"0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"`
 
 	// Global index of the claim
 	GlobalIndex BigIntString `json:"global_index" example:"1000000000000000000"`

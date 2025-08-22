@@ -106,7 +106,7 @@ func TestMigration0002(t *testing.T) {
 			metadata,
 			deposit_count,
 			block_timestamp,
-			tx_hash,
+			bridge_tx_hash,
 			from_address,
 			is_native_token
 		) VALUES (1, 0, 0, 0, '0x3', 0, '0x0000', 0, NULL, 0, 1739270804, '0xabcd', '0x123', true);
@@ -123,9 +123,10 @@ func TestMigration0002(t *testing.T) {
 			metadata,
 			is_message,
 			block_timestamp,
-			tx_hash,
+			bridge_tx_hash,
+			claim_tx_hash,
 			from_address
-		) VALUES (1, 0, 0, 0, '0x3', '0x0000', 0, 0, NULL, FALSE, 1739270804, '0xabcd', '0x123');
+		) VALUES (1, 0, 0, 0, '0x3', '0x0000', 0, 0, NULL, FALSE, 1739270804, '0x0000', '0xabcd', '0x123');
 	`)
 	require.NoError(t, err)
 	err = tx.Commit()

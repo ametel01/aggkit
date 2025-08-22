@@ -64,7 +64,7 @@ func TestBridgeEventE2E(t *testing.T) {
 		bridge.BlockNum = bn
 		receipt, err := setup.L1Environment.SimBackend.Client().TransactionReceipt(ctx, tx.Hash())
 		require.NoError(t, err)
-		bridge.TxHash = receipt.TxHash
+		bridge.BridgeTxHash = receipt.TxHash
 		block, err := simulatedClient.BlockByNumber(ctx, new(big.Int).SetUint64(bn))
 		require.NoError(t, err)
 		bridge.BlockTimestamp = block.Time()

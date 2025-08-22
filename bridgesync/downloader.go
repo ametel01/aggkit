@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/big"
 
 	"github.com/0xPolygon/cdk-contracts-tooling/contracts/fep/etrog/polygonzkevmbridge"
 	"github.com/0xPolygon/cdk-contracts-tooling/contracts/pp/l2-sovereign-chain/bridgel2sovereignchain"
 	"github.com/0xPolygon/cdk-contracts-tooling/contracts/pp/l2-sovereign-chain/polygonzkevmbridgev2"
 	rpctypes "github.com/0xPolygon/cdk-rpc/types"
 	bridgetypes "github.com/agglayer/aggkit/bridgeservice/types"
+	aggkitcommon "github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/db"
 	logger "github.com/agglayer/aggkit/log"
 	"github.com/agglayer/aggkit/sync"
@@ -143,7 +143,7 @@ func buildBridgeEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2
 			BlockNum:           b.Num,
 			BlockPos:           uint64(l.Index),
 			FromAddress:        foundCall.From,
-			TxHash:             l.TxHash,
+			BridgeTxHash:       l.TxHash,
 			Calldata:           foundCall.Input,
 			BlockTimestamp:     b.Timestamp,
 			LeafType:           bridgeEvent.LeafType,
@@ -182,17 +182,27 @@ func buildClaimEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2,
 			destinationNetwork = getDestinationNetwork(chainID.Uint64())
 		}
 
+		// Calculate the proper global index for post-Etrog claims
+		// The claimEvent.GlobalIndex is actually the deposit count, not the global index
+		mainnetFlag := claimEvent.OriginNetwork == 0
+		rollupIndex := claimEvent.OriginNetwork
+		if mainnetFlag {
+			rollupIndex = 0
+		}
+		globalIndex := aggkitcommon.GenerateGlobalIndex(mainnetFlag, rollupIndex, uint32(claimEvent.GlobalIndex.Uint64()))
+
 		claim := &Claim{
 			BlockNum:           b.Num,
 			BlockPos:           uint64(l.Index),
-			GlobalIndex:        claimEvent.GlobalIndex,
+			GlobalIndex:        globalIndex,
 			OriginNetwork:      claimEvent.OriginNetwork,
 			OriginAddress:      claimEvent.OriginAddress,
 			DestinationAddress: claimEvent.DestinationAddress,
 			DestinationNetwork: destinationNetwork,
 			Amount:             claimEvent.Amount,
 			BlockTimestamp:     b.Timestamp,
-			TxHash:             l.TxHash,
+			BridgeTxHash:       common.Hash{}, // Will be populated by processor
+			ClaimTxHash:        l.TxHash,
 			FromAddress:        l.Address,
 		}
 
@@ -229,15 +239,28 @@ func buildClaimEventHandlerPreEtrog(contract *polygonzkevmbridge.Polygonzkevmbri
 			destinationNetwork = getDestinationNetwork(chainID.Uint64())
 		}
 
+		// Calculate the proper global index for pre-Etrog claims
+		// The claimEvent.Index is actually the deposit count, not the global index
+		mainnetFlag := claimEvent.OriginNetwork == 0
+		rollupIndex := claimEvent.OriginNetwork
+		if mainnetFlag {
+			rollupIndex = 0
+		}
+		globalIndex := aggkitcommon.GenerateGlobalIndex(mainnetFlag, rollupIndex, uint32(claimEvent.Index))
+		
 		claim := &Claim{
 			BlockNum:           b.Num,
 			BlockPos:           uint64(l.Index),
-			GlobalIndex:        big.NewInt(int64(claimEvent.Index)),
+			GlobalIndex:        globalIndex,
 			OriginNetwork:      claimEvent.OriginNetwork,
 			OriginAddress:      claimEvent.OriginAddress,
 			DestinationAddress: claimEvent.DestinationAddress,
 			DestinationNetwork: destinationNetwork,
 			Amount:             claimEvent.Amount,
+			BridgeTxHash:       common.Hash{}, // Will be populated by processor
+			ClaimTxHash:        l.TxHash,
+			BlockTimestamp:     b.Timestamp,
+			FromAddress:        l.Address,
 		}
 
 		if syncFullClaims {
@@ -568,3 +591,4 @@ func (c *Claim) tryDecodeClaimCalldata(senderAddr common.Address, input []byte) 
 		return false, nil
 	}
 }
+

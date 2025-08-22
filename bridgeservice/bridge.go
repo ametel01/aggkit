@@ -154,6 +154,7 @@ func New(
 	return b
 }
 
+
 // LoggerHandler returns a Gin middleware that logs HTTP requests using logger at DEBUG level.
 func LoggerHandler(logger aggkitcommon.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {

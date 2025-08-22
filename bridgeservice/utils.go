@@ -8,9 +8,10 @@ import (
 
 	bridgetypes "github.com/agglayer/aggkit/bridgeservice/types"
 	"github.com/agglayer/aggkit/bridgesync"
-	"github.com/agglayer/aggkit/common"
+	aggkitcommon "github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/l1infotreesync"
 	"github.com/gin-gonic/gin"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -93,13 +94,21 @@ func parseUint32SliceParam(c *gin.Context, key string) ([]uint32, error) {
 	return result, nil
 }
 
+// hashToString converts a hash to string, returning empty string for zero hash
+func hashToString(hash common.Hash) bridgetypes.Hash {
+	if hash == (common.Hash{}) {
+		return bridgetypes.Hash("")
+	}
+	return bridgetypes.Hash(hash.Hex())
+}
+
 // NewBridgeResponse creates a new BridgeResponse instance out of the provided Bridge instance
 func NewBridgeResponse(bridge *bridgesync.Bridge) *bridgetypes.BridgeResponse {
 	return &bridgetypes.BridgeResponse{
 		BlockNum:           bridge.BlockNum,
 		BlockPos:           bridge.BlockPos,
 		FromAddress:        bridgetypes.Address(bridge.FromAddress.Hex()),
-		TxHash:             bridgetypes.Hash(bridge.TxHash.Hex()),
+		BridgeTxHash:       hashToString(bridge.BridgeTxHash),
 		Calldata:           fmt.Sprintf("0x%s", hex.EncodeToString(bridge.Calldata)),
 		BlockTimestamp:     bridge.BlockTimestamp,
 		LeafType:           bridge.LeafType,
@@ -137,10 +146,12 @@ func NewClaimResponseWithBridge(claim *bridgesync.Claim, bridge *bridgesync.Brid
 		}
 	}
 
+
 	return &bridgetypes.ClaimResponse{
 		GlobalIndex:        bridgetypes.BigIntString(claim.GlobalIndex.String()),
 		DestinationNetwork: claim.DestinationNetwork,
-		TxHash:             bridgetypes.Hash(claim.TxHash.Hex()),
+		BridgeTxHash:       hashToString(claim.BridgeTxHash),
+		ClaimTxHash:        hashToString(claim.ClaimTxHash),
 		Amount:             bridgetypes.BigIntString(claim.Amount.String()),
 		BlockNum:           claim.BlockNum,
 		FromAddress:        bridgetypes.Address(claim.FromAddress.Hex()),
@@ -169,12 +180,13 @@ func NewPendingClaimResponse(bridge *bridgesync.Bridge) *bridgetypes.ClaimRespon
 	if mainnetFlag {
 		rollupIndex = 0
 	}
-	globalIndex := common.GenerateGlobalIndex(mainnetFlag, rollupIndex, bridge.DepositCount)
+	globalIndex := aggkitcommon.GenerateGlobalIndex(mainnetFlag, rollupIndex, bridge.DepositCount)
 
 	return &bridgetypes.ClaimResponse{
 		GlobalIndex:        bridgetypes.BigIntString(globalIndex.String()),
 		DestinationNetwork: bridge.DestinationNetwork,
-		TxHash:             bridgetypes.Hash(bridge.TxHash.Hex()),
+		BridgeTxHash:       hashToString(bridge.BridgeTxHash),
+		ClaimTxHash:        bridgetypes.Hash(""), // Empty for pending claims
 		Amount:             bridgetypes.BigIntString(bridge.Amount.String()),
 		BlockNum:           bridge.BlockNum,
 		FromAddress:        bridgetypes.Address(bridge.FromAddress.Hex()),
