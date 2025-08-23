@@ -890,6 +890,7 @@ func (p *processor) ProcessBlock(ctx context.Context, block sync.Block) error {
 				p.log.Errorf("failed to insert bridge event at block %d: %v", block.Num, err)
 				return err
 			}
+
 			log.Infof(
 				"Bridge event inserted: origin_network=%d, destination_network=%d, deposit_count=%d, tx_hash=%s, networkID=%d",
 				event.Bridge.OriginNetwork,
@@ -898,14 +899,14 @@ func (p *processor) ProcessBlock(ctx context.Context, block sync.Block) error {
 				event.Bridge.BridgeTxHash.Hex(),
 				p.networkId,
 			)
+      
 			if p.enqueuer != nil {
-				log.Infof("I entered the if for the adding the claim to the claimsponsor queue")
 				claim := bridgeToClaim(event.Bridge)
 				if err := p.enqueuer.AddClaimToQueue(claim); err != nil {
 					p.log.Errorf("auto-sponsor enqueue failed: %v", err)
 				}
+				log.Infof("Claim with global index %d has been added to the claimsponsor queue", claim.GlobalIndex)
 			}
-			log.Infof("Finished adding the claim to the claimsponsor queue")
 		}
 
 		if event.Claim != nil {

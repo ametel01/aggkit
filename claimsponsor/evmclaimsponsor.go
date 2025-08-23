@@ -165,17 +165,27 @@ func (c *EVMClaimSponsor) checkClaim(ctx context.Context, claim *Claim) (*Claim,
 		return claim, err
 	}
 
-	gas, err := c.l2Client.EstimateGas(ctx, ethereum.CallMsg{
-		From: c.sender,
-		To:   &c.bridgeAddr,
-		Data: data,
-	})
-	if err != nil {
-		return claim, err
-	}
+	for {
+		gas, err := c.l2Client.EstimateGas(ctx, ethereum.CallMsg{
+			From: c.sender,
+			To:   &c.bridgeAddr,
+			Data: data,
+		})
+		attempts := 0
+		if err != nil {
+			// Gas estimation might be failing due to the GER not having been updated yet
+			attempts++
+			if attempts > 100 {
+				return claim, fmt.Errorf("gas estimation failed after 100 attempts: %v", err)
+			}
+			continue
+		}
 
-	if gas > c.maxGas {
-		return claim, fmt.Errorf(gasTooHighErrTemplate, gas, c.maxGas)
+		if gas > c.maxGas {
+			return claim, fmt.Errorf(gasTooHighErrTemplate, gas, c.maxGas)
+		}
+		log.Infof("Gas estimation successful: %d", gas)
+		break
 	}
 
 	return claim, nil

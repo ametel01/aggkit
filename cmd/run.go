@@ -103,6 +103,7 @@ func start(cliCtx *cli.Context) error {
 	)
 	var autosponsorL1, autosponsorL2 bridgesync.ClaimEnqueuer
 	if cfg.ClaimSponsor.ClaimAll {
+		log.Info("ClaimSponsor is enabled and ClaimAll is true")
 		autosponsorL1 = claimSponsorFwd
 		autosponsorL2 = claimSponsorRev
 	}

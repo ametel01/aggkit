@@ -209,6 +209,7 @@ func (c *ClaimSponsor) claim(ctx context.Context) error {
 		if err := c.updateClaimTxID(claim.GlobalIndex, txID); err != nil {
 			return fmt.Errorf("error updating claim txID: %w", err)
 		}
+		claim.TxID = txID
 		if err := c.updateClaimStatus(claim.GlobalIndex, WIPClaimStatus); err != nil {
 			return err
 		}

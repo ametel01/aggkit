@@ -60,8 +60,10 @@ func TestStartProfilingHttpServer(t *testing.T) {
 			resp.StatusCode,
 			http.StatusOK,
 		)
+
 		if err := resp.Body.Close(); err != nil {
 			t.Errorf("failed to close response body: %v", err)
 		}
+
 	}
 }
