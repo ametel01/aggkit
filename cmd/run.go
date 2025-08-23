@@ -97,6 +97,7 @@ func start(cliCtx *cli.Context) error {
 	claimSponsorRev := runClaimSponsorIfNeeded(cliCtx.Context, components, l1Client, cfg.ClaimSponsorReverse, l1InfoTreeSync)
 	var autosponsorL1, autosponsorL2 bridgesync.ClaimEnqueuer
 	if cfg.ClaimSponsor.ClaimAll {
+		log.Info("ClaimSponsor is enabled and ClaimAll is true")
 		autosponsorL1 = claimSponsorFwd
 		autosponsorL2 = claimSponsorRev
 	}
