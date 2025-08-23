@@ -147,7 +147,13 @@ func updateGlobalExitRoot(t *testing.T, setup *helpers.AggoracleWithEVMChain, i 
 	return crypto.Keccak256Hash(mainnetExitRoot[:], rollupExitRoot[:])
 }
 
-func testGERSyncer(t *testing.T, ctx context.Context, setup *helpers.AggoracleWithEVMChain, syncer *lastgersync.LastGERSync, i int) {
+func testGERSyncer(
+	t *testing.T,
+	ctx context.Context,
+	setup *helpers.AggoracleWithEVMChain,
+	syncer *lastgersync.LastGERSync,
+	i int,
+) {
 	t.Helper()
 
 	expectedGER, err := setup.L1Environment.GERContract.GetLastGlobalExitRoot(&bind.CallOpts{Pending: false})

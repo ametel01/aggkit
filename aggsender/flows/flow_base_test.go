@@ -45,7 +45,13 @@ func Test_baseFlow_limitCertSize(t *testing.T) {
 			fullCert: &types.CertificateBuildParams{
 				FromBlock: 1,
 				ToBlock:   10,
-				Bridges:   []bridgesync.Bridge{{BlockNum: 9}, {BlockNum: 10}, {BlockNum: 10}, {BlockNum: 10}, {BlockNum: 10}},
+				Bridges: []bridgesync.Bridge{
+					{BlockNum: 9},
+					{BlockNum: 10},
+					{BlockNum: 10},
+					{BlockNum: 10},
+					{BlockNum: 10},
+				},
 			},
 			expectedCert: &types.CertificateBuildParams{
 				FromBlock: 1,
@@ -60,7 +66,13 @@ func Test_baseFlow_limitCertSize(t *testing.T) {
 			fullCert: &types.CertificateBuildParams{
 				FromBlock: 1,
 				ToBlock:   10,
-				Bridges:   []bridgesync.Bridge{{BlockNum: 10}, {BlockNum: 10}, {BlockNum: 10}, {BlockNum: 10}, {BlockNum: 10}},
+				Bridges: []bridgesync.Bridge{
+					{BlockNum: 10},
+					{BlockNum: 10},
+					{BlockNum: 10},
+					{BlockNum: 10},
+					{BlockNum: 10},
+				},
 			},
 			expectedCert: &types.CertificateBuildParams{
 				FromBlock: 1,

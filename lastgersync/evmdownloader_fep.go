@@ -186,10 +186,17 @@ func (d *downloaderFEP) populateGreatestInjectedGER(b *sync.EVMBlock, gerInfos [
 	for _, gerInfo := range gerInfos {
 		attempts := 0
 		for {
-			blockHashOrTimestamp, err := d.l2GERManager.GlobalExitRootMap(&bind.CallOpts{Pending: false}, gerInfo.GlobalExitRoot)
+			blockHashOrTimestamp, err := d.l2GERManager.GlobalExitRootMap(
+				&bind.CallOpts{Pending: false},
+				gerInfo.GlobalExitRoot,
+			)
 			if err != nil {
 				attempts++
-				log.Errorf("failed to check if global exit root %s is injected on L2: %s", gerInfo.GlobalExitRoot.Hex(), err)
+				log.Errorf(
+					"failed to check if global exit root %s is injected on L2: %s",
+					gerInfo.GlobalExitRoot.Hex(),
+					err,
+				)
 				d.rh.Handle("GlobalExitRootMap", attempts)
 
 				continue

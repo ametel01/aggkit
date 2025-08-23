@@ -138,7 +138,11 @@ func (a *AggchainProverFlow) CheckInitialStatus(ctx context.Context) error {
 func (a *AggchainProverFlow) sanityCheckNoBlockGaps(lastSentCertificate *types.CertificateHeader) error {
 	lastSentCertficateStr := types.NilStr
 	if lastSentCertificate != nil {
-		lastSentCertficateStr = fmt.Sprintf("cert from:%d, to:%d", lastSentCertificate.FromBlock, lastSentCertificate.ToBlock)
+		lastSentCertficateStr = fmt.Sprintf(
+			"cert from:%d, to:%d",
+			lastSentCertificate.FromBlock,
+			lastSentCertificate.ToBlock,
+		)
 	}
 	msg := fmt.Sprintf("aggchainProverFlow - sanityCheckNoBlockGaps - last sent certificate: %s, startL2Block:%d",
 		lastSentCertficateStr, a.baseFlow.StartL2Block())
@@ -430,15 +434,27 @@ func (a *AggchainProverFlow) GenerateAggchainProof(
 		aggchainProof, err = a.generateOptimisticAggchainProof(ctx, certBuildParams, request)
 	}
 	if err != nil {
-		err := fmt.Errorf("aggchainProverFlow - error fetching aggchain proof (optimisticMode: %t) for lastProvenBlock: %d, "+
-			"maxEndBlock: %d. Err: %w. Message sent: %s", optimisticMode, lastProvenBlock, toBlock, err, request.String(),
+		err := fmt.Errorf(
+			"aggchainProverFlow - error fetching aggchain proof (optimisticMode: %t) for lastProvenBlock: %d, "+
+				"maxEndBlock: %d. Err: %w. Message sent: %s",
+			optimisticMode,
+			lastProvenBlock,
+			toBlock,
+			err,
+			request.String(),
 		)
 		a.log.Error(err.Error())
 		return nil, nil, err
 	}
-	a.log.Infof("aggchainProverFlow - aggkit-prover fetched aggchain proof (optimisticMode: %t) for lastProvenBlock: %d, "+
-		"maxEndBlock: %d. root: %s.Message sent: %s", optimisticMode, lastProvenBlock, toBlock,
-		root.String(), request.String())
+	a.log.Infof(
+		"aggchainProverFlow - aggkit-prover fetched aggchain proof (optimisticMode: %t) for lastProvenBlock: %d, "+
+			"maxEndBlock: %d. root: %s.Message sent: %s",
+		optimisticMode,
+		lastProvenBlock,
+		toBlock,
+		root.String(),
+		request.String(),
+	)
 	return aggchainProof, root, nil
 }
 

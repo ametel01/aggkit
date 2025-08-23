@@ -43,13 +43,13 @@ func TestE2EL1toEVML2(t *testing.T) {
 		0, // gasOffset
 		setup.EthTxManagerMock,
 		time.Millisecond*50, // retryAfterErrorPeriod
-		5, // maxRetryAttemptsAfterError - allow some retries but not unlimited
+		5,                   // maxRetryAttemptsAfterError - allow some retries but not unlimited
 		time.Millisecond*10, // waitTxToBeMinedPeriod
 		time.Millisecond*10, // waitOnEmptyQueue
 		nil,
 	)
 	require.NoError(t, err)
-	
+
 	// Start claim sponsor in goroutine and handle potential failure
 	claimSponsorDone := make(chan struct{})
 	claimSponsorPanic := make(chan interface{})
@@ -71,7 +71,15 @@ func TestE2EL1toEVML2(t *testing.T) {
 		// Send bridges to L2, wait for GER to be injected on L2
 		amount := new(big.Int).SetUint64(uint64(i) + 1)
 		setup.L1Environment.Auth.Value = amount
-		_, err := setup.L1Environment.BridgeContract.BridgeAsset(setup.L1Environment.Auth, setup.NetworkIDL2, setup.L2Environment.Auth.From, amount, common.Address{}, true, nil)
+		_, err := setup.L1Environment.BridgeContract.BridgeAsset(
+			setup.L1Environment.Auth,
+			setup.NetworkIDL2,
+			setup.L2Environment.Auth.From,
+			amount,
+			common.Address{},
+			true,
+			nil,
+		)
 		require.NoError(t, err)
 		setup.L1Environment.SimBackend.Commit()
 		time.Sleep(time.Millisecond * 300)
@@ -106,24 +114,25 @@ func TestE2EL1toEVML2(t *testing.T) {
 		succeed := false
 		claimFailed := false
 		claimSponsorExited := false
-		
+
+	monitorLoop:
 		for i := 0; i < 10; i++ {
 			// Check if claim sponsor has exited or panicked
 			select {
 			case <-claimSponsorDone:
 				claimSponsorExited = true
-				break
+				break monitorLoop
 			case r := <-claimSponsorPanic:
 				t.Logf("Claim sponsor panicked with: %v", r)
 				claimSponsorExited = true
-				break
+				break monitorLoop
 			default:
 			}
-			
+
 			if claimSponsorExited {
 				break
 			}
-			
+
 			claim, err := claimer.GetClaim(globalIndex)
 			require.NoError(t, err)
 			if claim.Status == claimsponsor.FailedClaimStatus {
@@ -135,10 +144,12 @@ func TestE2EL1toEVML2(t *testing.T) {
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
-		
+
 		// If claim sponsor exited or claim failed, skip the test as the environment may not be properly configured
 		if claimSponsorExited || claimFailed {
-			t.Skipf("Skipping test - claim sponsor failed or exited, likely due to test environment network ID/chain ID mismatch")
+			t.Skipf(
+				"Skipping test - claim sponsor failed or exited, likely due to test environment network ID/chain ID mismatch",
+			)
 		}
 		require.True(t, succeed, "claim should succeed within timeout")
 
@@ -148,7 +159,9 @@ func TestE2EL1toEVML2(t *testing.T) {
 		isClaimed, err := setup.L2Environment.BridgeContract.IsClaimed(&bind.CallOpts{Pending: false}, i, 0)
 		require.NoError(t, err)
 		if !isClaimed {
-			t.Skipf("Skipping test assertion - test environment may not be configured for network ID usage. This is expected if contracts were deployed expecting chain IDs.")
+			t.Skipf(
+				"Skipping test assertion - test environment may not be configured for network ID usage. This is expected if contracts were deployed expecting chain IDs.",
+			)
 		}
 	}
 }

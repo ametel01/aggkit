@@ -209,8 +209,13 @@ func (rd *ReorgDetector) detectReorgInTrackedList(ctx context.Context) error {
 						hdrs.removeRange(hdr.Num, hdr.Num)
 
 						if err := rd.removeTrackedBlockRange(id, hdr.Num, hdr.Num); err != nil {
-							return fmt.Errorf("error removing blocks from DB for subscriber %s between blocks %d and %d: %w",
-								id, hdr.Num, hdr.Num, err)
+							return fmt.Errorf(
+								"error removing blocks from DB for subscriber %s between blocks %d and %d: %w",
+								id,
+								hdr.Num,
+								hdr.Num,
+								err,
+							)
 						}
 					}
 
@@ -227,8 +232,15 @@ func (rd *ReorgDetector) detectReorgInTrackedList(ctx context.Context) error {
 				if err := rd.insertReorgEvent(event); err != nil {
 					return fmt.Errorf("failed to insert reorg event: %w", err)
 				}
-				rd.log.Warnf("Reorg detected %s for subscriber %s between blocks %d and %d. currentHash: %s trackHash: %s",
-					rd.network, event.SubscriberID, event.FromBlock, event.ToBlock, event.CurrentHash, event.TrackedHash)
+				rd.log.Warnf(
+					"Reorg detected %s for subscriber %s between blocks %d and %d. currentHash: %s trackHash: %s",
+					rd.network,
+					event.SubscriberID,
+					event.FromBlock,
+					event.ToBlock,
+					event.CurrentHash,
+					event.TrackedHash,
+				)
 				// Notify the subscriber about the reorg
 				rd.notifySubscriber(id, hdr)
 				// Remove the reorged block and all the following blocks from DB

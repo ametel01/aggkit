@@ -111,7 +111,12 @@ func New(
 		rateLimiter:                  rateLimit,
 		compatibilityStoragedChecker: compatibilityStoragedChecker,
 		l2OriginNetwork:              l2OriginNetwork,
-		certStatusChecker:            statuschecker.NewCertStatusChecker(logger, storage, aggLayerClient, l2OriginNetwork),
+		certStatusChecker: statuschecker.NewCertStatusChecker(
+			logger,
+			storage,
+			aggLayerClient,
+			l2OriginNetwork,
+		),
 	}, nil
 }
 
@@ -160,7 +165,10 @@ func (a *AggSender) checkDBCompatibility(ctx context.Context) {
 		return
 	}
 	if err := a.compatibilityStoragedChecker.Check(ctx, nil); err != nil {
-		a.log.Panicf("error checking compatibility data in DB, you can bypass this check using config file. Err: %w", err)
+		a.log.Panicf(
+			"error checking compatibility data in DB, you can bypass this check using config file. Err: %w",
+			err,
+		)
 	}
 }
 func (a *AggSender) checkSendCertificateStopCondition(err error) {

@@ -833,7 +833,11 @@ func TestInsertAndGetClaim(t *testing.T) {
 		IsMessage:           false,
 	}
 
-	_, err = tx.Exec(`INSERT INTO block (num, hash) VALUES ($1, $2)`, testClaim.BlockNum, fmt.Sprintf("0x%x", testClaim.BlockNum))
+	_, err = tx.Exec(
+		`INSERT INTO block (num, hash) VALUES ($1, $2)`,
+		testClaim.BlockNum,
+		fmt.Sprintf("0x%x", testClaim.BlockNum),
+	)
 	require.NoError(t, err)
 	require.NoError(t, meddler.Insert(tx, "claim", testClaim))
 
@@ -945,13 +949,55 @@ func TestGetBridgesPaged(t *testing.T) {
 	fromBlock := uint64(1)
 	toBlock := uint64(10)
 	bridges := []*Bridge{
-		{DepositCount: 0, BlockNum: 1, Amount: big.NewInt(1), DestinationNetwork: 10, FromAddress: common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970")},
-		{DepositCount: 1, BlockNum: 2, Amount: big.NewInt(1), DestinationNetwork: 10, FromAddress: common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970")},
-		{DepositCount: 2, BlockNum: 3, Amount: big.NewInt(1), DestinationNetwork: 20, FromAddress: common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970")},
-		{DepositCount: 3, BlockNum: 4, Amount: big.NewInt(1), DestinationNetwork: 30, FromAddress: common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970")},
-		{DepositCount: 4, BlockNum: 5, Amount: big.NewInt(1), DestinationNetwork: 30, FromAddress: common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970")},
-		{DepositCount: 5, BlockNum: 6, Amount: big.NewInt(1), DestinationNetwork: 30, FromAddress: common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970")},
-		{DepositCount: 6, BlockNum: 7, Amount: big.NewInt(1), DestinationNetwork: 50, FromAddress: common.HexToAddress("0xd34aaF64b29273B7D567FCFc40544c014EEe9970")},
+		{
+			DepositCount:       0,
+			BlockNum:           1,
+			Amount:             big.NewInt(1),
+			DestinationNetwork: 10,
+			FromAddress:        common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"),
+		},
+		{
+			DepositCount:       1,
+			BlockNum:           2,
+			Amount:             big.NewInt(1),
+			DestinationNetwork: 10,
+			FromAddress:        common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"),
+		},
+		{
+			DepositCount:       2,
+			BlockNum:           3,
+			Amount:             big.NewInt(1),
+			DestinationNetwork: 20,
+			FromAddress:        common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"),
+		},
+		{
+			DepositCount:       3,
+			BlockNum:           4,
+			Amount:             big.NewInt(1),
+			DestinationNetwork: 30,
+			FromAddress:        common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"),
+		},
+		{
+			DepositCount:       4,
+			BlockNum:           5,
+			Amount:             big.NewInt(1),
+			DestinationNetwork: 30,
+			FromAddress:        common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"),
+		},
+		{
+			DepositCount:       5,
+			BlockNum:           6,
+			Amount:             big.NewInt(1),
+			DestinationNetwork: 30,
+			FromAddress:        common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"),
+		},
+		{
+			DepositCount:       6,
+			BlockNum:           7,
+			Amount:             big.NewInt(1),
+			DestinationNetwork: 50,
+			FromAddress:        common.HexToAddress("0xd34aaF64b29273B7D567FCFc40544c014EEe9970"),
+		},
 	}
 
 	path := path.Join(t.TempDir(), "bridgesyncGetBridgesPaged.sqlite")
@@ -1157,7 +1203,14 @@ func TestGetBridgesPaged(t *testing.T) {
 			t.Parallel()
 
 			ctx := context.Background()
-			bridges, count, err := p.GetBridgesPaged(ctx, tc.page, tc.pageSize, tc.depositCount, tc.networkIDs, tc.fromAddress)
+			bridges, count, err := p.GetBridgesPaged(
+				ctx,
+				tc.page,
+				tc.pageSize,
+				tc.depositCount,
+				tc.networkIDs,
+				tc.fromAddress,
+			)
 
 			if tc.expectedError != "" {
 				require.ErrorContains(t, err, tc.expectedError)
@@ -1185,12 +1238,54 @@ func TestGetClaimsPaged(t *testing.T) {
 	num2.SetString("18446744073709551618", 10)
 
 	claims := []*Claim{
-		{BlockNum: 1, GlobalIndex: num2, Amount: big.NewInt(1), OriginNetwork: 1, FromAddress: common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"), MainnetExitRoot: common.Hash{}},
-		{BlockNum: 2, GlobalIndex: big.NewInt(2), Amount: big.NewInt(1), OriginNetwork: 1, FromAddress: common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"), MainnetExitRoot: common.Hash{}},
-		{BlockNum: 3, GlobalIndex: uint64Max, Amount: big.NewInt(1), OriginNetwork: 2, FromAddress: common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"), MainnetExitRoot: common.Hash{}},
-		{BlockNum: 4, GlobalIndex: num1, Amount: big.NewInt(1), OriginNetwork: 2, FromAddress: common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"), MainnetExitRoot: common.Hash{}},
-		{BlockNum: 5, GlobalIndex: big.NewInt(5), Amount: big.NewInt(1), OriginNetwork: 3, FromAddress: common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"), MainnetExitRoot: common.Hash{}},
-		{BlockNum: 6, GlobalIndex: uint256Max, Amount: big.NewInt(1), OriginNetwork: 4, FromAddress: common.HexToAddress("0xd34aaF64b29273B7D567FCFc40544c014EEe9970"), MainnetExitRoot: common.Hash{}},
+		{
+			BlockNum:        1,
+			GlobalIndex:     num2,
+			Amount:          big.NewInt(1),
+			OriginNetwork:   1,
+			FromAddress:     common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"),
+			MainnetExitRoot: common.Hash{},
+		},
+		{
+			BlockNum:        2,
+			GlobalIndex:     big.NewInt(2),
+			Amount:          big.NewInt(1),
+			OriginNetwork:   1,
+			FromAddress:     common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"),
+			MainnetExitRoot: common.Hash{},
+		},
+		{
+			BlockNum:        3,
+			GlobalIndex:     uint64Max,
+			Amount:          big.NewInt(1),
+			OriginNetwork:   2,
+			FromAddress:     common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"),
+			MainnetExitRoot: common.Hash{},
+		},
+		{
+			BlockNum:        4,
+			GlobalIndex:     num1,
+			Amount:          big.NewInt(1),
+			OriginNetwork:   2,
+			FromAddress:     common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"),
+			MainnetExitRoot: common.Hash{},
+		},
+		{
+			BlockNum:        5,
+			GlobalIndex:     big.NewInt(5),
+			Amount:          big.NewInt(1),
+			OriginNetwork:   3,
+			FromAddress:     common.HexToAddress("0xE34aaF64b29273B7D567FCFc40544c014EEe9970"),
+			MainnetExitRoot: common.Hash{},
+		},
+		{
+			BlockNum:        6,
+			GlobalIndex:     uint256Max,
+			Amount:          big.NewInt(1),
+			OriginNetwork:   4,
+			FromAddress:     common.HexToAddress("0xd34aaF64b29273B7D567FCFc40544c014EEe9970"),
+			MainnetExitRoot: common.Hash{},
+		},
 	}
 
 	path := path.Join(t.TempDir(), "bridgesyncGetClaimsPaged.sqlite")
@@ -1328,9 +1423,10 @@ func TestProcessor_GetTokenMappings(t *testing.T) {
 	require.NoError(t, err)
 
 	allTokenMappings := make([]*TokenMapping, 0, tokenMappingsCount)
-	for i := tokenMappingsCount - 1; i >= 0; i-- {
+	for i := 0; i < tokenMappingsCount; i++ {
 		tokenMappingEvt := &TokenMapping{
 			BlockNum:            uint64(i + 1),
+			BlockPos:            0, // All events are at position 0 in their respective blocks
 			OriginNetwork:       uint32(i),
 			OriginTokenAddress:  common.HexToAddress(fmt.Sprintf("%d", i)),
 			WrappedTokenAddress: common.HexToAddress(fmt.Sprintf("%d", i+1)),
@@ -1350,7 +1446,8 @@ func TestProcessor_GetTokenMappings(t *testing.T) {
 			Events: []interface{}{Event{TokenMapping: tokenMappingEvt}},
 		}
 
-		allTokenMappings = append(allTokenMappings, tokenMappingEvt)
+		// Insert at the beginning to build slice in descending order (to match DB query ORDER BY block_num DESC)
+		allTokenMappings = append([]*TokenMapping{tokenMappingEvt}, allTokenMappings...)
 
 		// insert TokenMapping event to the db
 		err = p.ProcessBlock(context.Background(), block)
@@ -1535,7 +1632,10 @@ func TestDecodePreEtrogCalldata_Valid(t *testing.T) {
 		ProofLocalExitRoot: proof,
 	}
 
-	expectedClaim.GlobalExitRoot = crypto.Keccak256Hash(expectedClaim.MainnetExitRoot.Bytes(), expectedClaim.RollupExitRoot.Bytes())
+	expectedClaim.GlobalExitRoot = crypto.Keccak256Hash(
+		expectedClaim.MainnetExitRoot.Bytes(),
+		expectedClaim.RollupExitRoot.Bytes(),
+	)
 
 	claimAssetInput, err := bridgeV1ABI.Pack("claimAsset",
 		globalIndex,

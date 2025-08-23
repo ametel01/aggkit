@@ -29,11 +29,14 @@ var (
 	histogramVecName      = "histogramVecName"
 	histogramVecLabelName = "histogramVecLabelName"
 	histogramVecLabelVal  = "histogramVecLabelVal"
-	histogramVecOpts      = HistogramVecOpts{prometheus.HistogramOpts{Name: histogramVecName}, []string{histogramVecLabelName}}
-	histogramVec          *prometheus.HistogramVec
-	summaryName           = "summaryName"
-	summaryOpts           = prometheus.SummaryOpts{Name: summaryName}
-	summary               = prometheus.NewSummary(summaryOpts)
+	histogramVecOpts      = HistogramVecOpts{
+		prometheus.HistogramOpts{Name: histogramVecName},
+		[]string{histogramVecLabelName},
+	}
+	histogramVec *prometheus.HistogramVec
+	summaryName  = "summaryName"
+	summaryOpts  = prometheus.SummaryOpts{Name: summaryName}
+	summary      = prometheus.NewSummary(summaryOpts)
 )
 
 func setup() {

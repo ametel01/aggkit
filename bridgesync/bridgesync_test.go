@@ -394,7 +394,11 @@ func TestBridgeSync_GetLegacyTokenMigrations(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("retrieve all token migrations", func(t *testing.T) {
-		tokenMigrations, totalTokenMigrations, err := s.GetLegacyTokenMigrations(context.Background(), 1, tokenMigrationsCount)
+		tokenMigrations, totalTokenMigrations, err := s.GetLegacyTokenMigrations(
+			context.Background(),
+			1,
+			tokenMigrationsCount,
+		)
 		require.NoError(t, err)
 		require.Equal(t, tokenMigrationsCount, totalTokenMigrations)
 		require.Equal(t, allTokenMirgations, tokenMigrations)
@@ -404,7 +408,11 @@ func TestBridgeSync_GetLegacyTokenMigrations(t *testing.T) {
 		pageSize := uint32(5)
 
 		for page := uint32(1); page <= 4; page++ {
-			tokenMigrations, totalTokenMigrations, err := s.GetLegacyTokenMigrations(context.Background(), page, pageSize)
+			tokenMigrations, totalTokenMigrations, err := s.GetLegacyTokenMigrations(
+				context.Background(),
+				page,
+				pageSize,
+			)
 			require.NoError(t, err)
 			require.Equal(t, tokenMigrationsCount, totalTokenMigrations)
 
@@ -418,7 +426,11 @@ func TestBridgeSync_GetLegacyTokenMigrations(t *testing.T) {
 		pageSize := uint32(5)
 		pageNum := uint32(5)
 
-		tokenMigrations, totalTokenMigrations, err := s.GetLegacyTokenMigrations(context.Background(), pageNum, pageSize)
+		tokenMigrations, totalTokenMigrations, err := s.GetLegacyTokenMigrations(
+			context.Background(),
+			pageNum,
+			pageSize,
+		)
 		require.ErrorContains(t, err,
 			"invalid page number for given page size and total number of legacy token migrations")
 		require.Equal(t, 0, totalTokenMigrations)
@@ -490,7 +502,10 @@ func TestBridgeSync_GetLastReorgEvent(t *testing.T) {
 	})
 
 	t.Run("error retrieving last reorg event", func(t *testing.T) {
-		mockReorgDetector.EXPECT().GetLastReorgEvent(mock.Anything).Return(reorgdetector.ReorgEvent{}, errors.New("reorg event not found")).Once()
+		mockReorgDetector.EXPECT().
+			GetLastReorgEvent(mock.Anything).
+			Return(reorgdetector.ReorgEvent{}, errors.New("reorg event not found")).
+			Once()
 
 		reorgEvent, err := s.GetLastReorgEvent(ctx)
 		require.Error(t, err)

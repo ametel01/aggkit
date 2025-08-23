@@ -61,14 +61,24 @@ func Test_ReorgDetector(t *testing.T) {
 	header3Reorged, err := clientL1.Client().HeaderByHash(ctx, clientL1.Commit())
 	require.NoError(t, err)
 	require.Equal(t, uint64(3), header3Reorged.Number.Uint64())
-	err = reorgDetector.AddBlockToTrack(ctx, subID, header3Reorged.Number.Uint64(), header3Reorged.Hash()) // Adding block 3
+	err = reorgDetector.AddBlockToTrack(
+		ctx,
+		subID,
+		header3Reorged.Number.Uint64(),
+		header3Reorged.Hash(),
+	) // Adding block 3
 	require.NoError(t, err)
 
 	// Block 4
 	header4Reorged, err := clientL1.Client().HeaderByHash(ctx, clientL1.Commit())
 	require.Equal(t, uint64(4), header4Reorged.Number.Uint64())
 	require.NoError(t, err)
-	err = reorgDetector.AddBlockToTrack(ctx, subID, header4Reorged.Number.Uint64(), header4Reorged.Hash()) // Adding block 4
+	err = reorgDetector.AddBlockToTrack(
+		ctx,
+		subID,
+		header4Reorged.Number.Uint64(),
+		header4Reorged.Hash(),
+	) // Adding block 4
 	require.NoError(t, err)
 
 	err = clientL1.Fork(header2.Hash()) // Reorg on block 2 (block 2 is still valid)
@@ -210,7 +220,11 @@ func TestGetTrackedBlocks(t *testing.T) {
 func TestNotSubscribed(t *testing.T) {
 	clientL1 := simulated.NewBackend(nil, simulated.WithBlockGasLimit(10000000))
 	testDir := path.Join(t.TempDir(), "reorgdetectorTestNotSubscribed.sqlite")
-	reorgDetector, err := New(clientL1.Client(), Config{DBPath: testDir, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 100)}, L1)
+	reorgDetector, err := New(
+		clientL1.Client(),
+		Config{DBPath: testDir, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 100)},
+		L1,
+	)
 	require.NoError(t, err)
 	err = reorgDetector.AddBlockToTrack(context.Background(), "foo", 1, common.Hash{})
 	require.True(t, strings.Contains(err.Error(), "is not subscribed"))
@@ -232,12 +246,19 @@ func TestDetectReorgs(t *testing.T) {
 		client.On("HeaderByNumber", ctx, trackedBlock.Number).Return(trackedBlock, nil)
 
 		testDir := path.Join(t.TempDir(), "reorgdetectorTestDetectReorgs.sqlite")
-		reorgDetector, err := New(client, Config{DBPath: testDir, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 100)}, L1)
+		reorgDetector, err := New(
+			client,
+			Config{DBPath: testDir, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 100)},
+			L1,
+		)
 		require.NoError(t, err)
 
 		_, err = reorgDetector.Subscribe(syncerID)
 		require.NoError(t, err)
-		require.NoError(t, reorgDetector.AddBlockToTrack(ctx, syncerID, trackedBlock.Number.Uint64(), trackedBlock.Hash()))
+		require.NoError(
+			t,
+			reorgDetector.AddBlockToTrack(ctx, syncerID, trackedBlock.Number.Uint64(), trackedBlock.Hash()),
+		)
 
 		require.NoError(t, reorgDetector.detectReorgInTrackedList(ctx))
 
@@ -258,12 +279,19 @@ func TestDetectReorgs(t *testing.T) {
 		client.On("HeaderByNumber", ctx, big.NewInt(int64(rpc.FinalizedBlockNumber))).Return(lastFinalizedBlock, nil)
 
 		testDir := path.Join(t.TempDir(), "reorgdetectorTestDetectReorgs.sqlite")
-		reorgDetector, err := New(client, Config{DBPath: testDir, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 100)}, L1)
+		reorgDetector, err := New(
+			client,
+			Config{DBPath: testDir, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 100)},
+			L1,
+		)
 		require.NoError(t, err)
 
 		_, err = reorgDetector.Subscribe(syncerID)
 		require.NoError(t, err)
-		require.NoError(t, reorgDetector.AddBlockToTrack(ctx, syncerID, trackedBlock.Number.Uint64(), trackedBlock.Hash()))
+		require.NoError(
+			t,
+			reorgDetector.AddBlockToTrack(ctx, syncerID, trackedBlock.Number.Uint64(), trackedBlock.Hash()),
+		)
 
 		require.NoError(t, reorgDetector.detectReorgInTrackedList(ctx))
 
@@ -283,7 +311,11 @@ func TestDetectReorgs(t *testing.T) {
 		client.On("HeaderByNumber", ctx, trackedBlock.Number).Return(reorgedTrackedBlock, nil)
 
 		testDir := path.Join(t.TempDir(), "reorgdetectorTestDetectReorgs.sqlite")
-		reorgDetector, err := New(client, Config{DBPath: testDir, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 100)}, L1)
+		reorgDetector, err := New(
+			client,
+			Config{DBPath: testDir, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 100)},
+			L1,
+		)
 		require.NoError(t, err)
 
 		subscription, err := reorgDetector.Subscribe(syncerID)
@@ -299,7 +331,10 @@ func TestDetectReorgs(t *testing.T) {
 			wg.Done()
 		}()
 
-		require.NoError(t, reorgDetector.AddBlockToTrack(ctx, syncerID, trackedBlock.Number.Uint64(), trackedBlock.Hash()))
+		require.NoError(
+			t,
+			reorgDetector.AddBlockToTrack(ctx, syncerID, trackedBlock.Number.Uint64(), trackedBlock.Hash()),
+		)
 
 		require.NoError(t, reorgDetector.detectReorgInTrackedList(ctx))
 

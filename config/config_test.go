@@ -23,7 +23,11 @@ func TestLExploratorySetConfigFlag(t *testing.T) {
 func TestLoadDefaultConfig(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "ut_config")
 	require.NoError(t, err)
-	defer os.Remove(tmpFile.Name())
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Errorf("failed to remove file: %v", err)
+		}
+	}()
 	_, err = tmpFile.Write([]byte(DefaultMandatoryVars))
 	require.NoError(t, err)
 	ctx := newCliContextConfigFlag(t, tmpFile.Name())
@@ -38,24 +42,39 @@ func TestLoadDefaultConfig(t *testing.T) {
 	require.Equal(t, cfg.AggSender.OptimisticModeConfig.TrustedSequencerKey, cfg.AggSender.AggsenderPrivateKey)
 	require.Equal(t, cfg.AggSender.OptimisticModeConfig.OpNodeURL, "http://localhost:8080")
 	require.Equal(t, cfg.L1InfoTreeSync.RequireStorageContentCompatibility, true)
-	require.Equal(t, ethermanconfig.RPCClientConfig{Mode: ethermanconfig.RPCModeBasic, URL: "http://localhost:8123"}, cfg.Common.L2RPC)
+	require.Equal(
+		t,
+		ethermanconfig.RPCClientConfig{Mode: ethermanconfig.RPCModeBasic, URL: "http://localhost:8123"},
+		cfg.Common.L2RPC,
+	)
 	require.Equal(t, cfg.Profiling.ProfilingEnabled, false)
 	require.Equal(t, cfg.Profiling.ProfilingHost, "localhost")
 	require.Equal(t, cfg.Profiling.ProfilingPort, 6060)
-	t.Logf("cfg.AggSender.OptimisticModeConfig.TrustedSequencerKey: %+v", cfg.AggSender.OptimisticModeConfig.TrustedSequencerKey)
+	t.Logf(
+		"cfg.AggSender.OptimisticModeConfig.TrustedSequencerKey: %+v",
+		cfg.AggSender.OptimisticModeConfig.TrustedSequencerKey,
+	)
 }
 
 func TestLoadConfigWithSaveConfigFile(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "ut_config")
 	require.NoError(t, err)
-	defer os.Remove(tmpFile.Name())
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Errorf("failed to remove file: %v", err)
+		}
+	}()
 	_, err = tmpFile.Write([]byte(DefaultVars + "\n"))
 	require.NoError(t, err)
 	fmt.Printf("file: %s\n", tmpFile.Name())
 	ctx := newCliContextConfigFlag(t, tmpFile.Name())
 	dir, err := os.MkdirTemp("", "ut_test_save_config")
 	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Errorf("failed to remove directory: %v", err)
+		}
+	}()
 
 	err = ctx.Set(FlagSaveConfigPath, dir)
 	require.NoError(t, err)
@@ -90,7 +109,11 @@ func newCliContextConfigFlag(t *testing.T, values ...string) *cli.Context {
 func TestLoadConfigWithDeprecatedFields(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "ut_config")
 	require.NoError(t, err)
-	defer os.Remove(tmpFile.Name())
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Errorf("failed to remove file: %v", err)
+		}
+	}()
 	_, err = tmpFile.Write([]byte(`
 	[Common]
 	IsValidiumMode = true

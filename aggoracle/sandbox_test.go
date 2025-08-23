@@ -38,12 +38,25 @@ type MockBridgeDataProvider struct {
 
 func (m *MockBridgeDataProvider) GetLastProcessedBlock(ctx context.Context) (uint64, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(uint64), args.Error(1)
+	if val := args.Get(0); val != nil {
+		if v, ok := val.(uint64); ok {
+			return v, args.Error(1)
+		}
+	}
+	return 0, args.Error(1)
 }
 
-func (m *MockBridgeDataProvider) GetBridges(ctx context.Context, fromBlock, toBlock uint64) ([]bridgesync.Bridge, error) {
+func (m *MockBridgeDataProvider) GetBridges(
+	ctx context.Context,
+	fromBlock, toBlock uint64,
+) ([]bridgesync.Bridge, error) {
 	args := m.Called(ctx, fromBlock, toBlock)
-	return args.Get(0).([]bridgesync.Bridge), args.Error(1)
+	if val := args.Get(0); val != nil {
+		if v, ok := val.([]bridgesync.Bridge); ok {
+			return v, args.Error(1)
+		}
+	}
+	return nil, args.Error(1)
 }
 
 // MockL1InfoTreer is a mock implementation of the L1InfoTreer interface
@@ -51,12 +64,18 @@ type MockL1InfoTreer struct {
 	mock.Mock
 }
 
-func (m *MockL1InfoTreer) GetLatestInfoUntilBlock(ctx context.Context, blockNum uint64) (*l1infotreesync.L1InfoTreeLeaf, error) {
+func (m *MockL1InfoTreer) GetLatestInfoUntilBlock(
+	ctx context.Context,
+	blockNum uint64,
+) (*l1infotreesync.L1InfoTreeLeaf, error) {
 	args := m.Called(ctx, blockNum)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*l1infotreesync.L1InfoTreeLeaf), args.Error(1)
+	if val, ok := args.Get(0).(*l1infotreesync.L1InfoTreeLeaf); ok {
+		return val, args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockL1InfoTreer) GetLastInfo() (*l1infotreesync.L1InfoTreeLeaf, error) {
@@ -64,7 +83,10 @@ func (m *MockL1InfoTreer) GetLastInfo() (*l1infotreesync.L1InfoTreeLeaf, error) 
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*l1infotreesync.L1InfoTreeLeaf), args.Error(1)
+	if val, ok := args.Get(0).(*l1infotreesync.L1InfoTreeLeaf); ok {
+		return val, args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func TestNewSandboxAggOracle(t *testing.T) {
@@ -207,11 +229,13 @@ func TestSandboxAggOracle_calculateGERFromBridgeEvents(t *testing.T) {
 			// Setup bridge data mocks
 			// L1 bridge sync - for mainnet exit root
 			mockL1BridgeSync.On("GetLastProcessedBlock", mock.Anything).Return(tt.lastBlock, nil)
-			mockL1BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).Return(tt.bridges, nil)
+			mockL1BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).
+				Return(tt.bridges, nil)
 
 			// L2 bridge sync - for rollup exit root (usually empty in tests)
 			mockL2BridgeSync.On("GetLastProcessedBlock", mock.Anything).Return(tt.lastBlock, nil)
-			mockL2BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).Return([]bridgesync.Bridge{}, nil)
+			mockL2BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).
+				Return([]bridgesync.Bridge{}, nil)
 
 			// Note: With the new L1InfoTree-first approach, GetLatestInfoUntilBlock should not be called
 			// since GetLastInfo() will be called first and return an error, causing fallback to bridge calculation
@@ -295,7 +319,8 @@ func TestSandboxAggOracle_simulateGERCalculation(t *testing.T) {
 
 			// Setup mock expectations
 			if tt.l1InfoTreeError != nil {
-				mockL1Info.On("GetLatestInfoUntilBlock", mock.Anything, tt.bridge.BlockNum).Return((*l1infotreesync.L1InfoTreeLeaf)(nil), tt.l1InfoTreeError)
+				mockL1Info.On("GetLatestInfoUntilBlock", mock.Anything, tt.bridge.BlockNum).
+					Return((*l1infotreesync.L1InfoTreeLeaf)(nil), tt.l1InfoTreeError)
 			} else {
 				mockL1InfoLeaf := &l1infotreesync.L1InfoTreeLeaf{
 					MainnetExitRoot: mainnetExitRoot,
@@ -404,11 +429,13 @@ func TestSandboxAggOracle_processLatestGERSandbox(t *testing.T) {
 			// Setup bridge data mocks
 			// GetLastProcessedBlock is called once for L1 bridge sync in calculateGERFromExitRoots
 			mockL1BridgeSync.On("GetLastProcessedBlock", mock.Anything).Return(uint64(100), nil)
-			mockL1BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).Return(tt.bridges, nil)
+			mockL1BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).
+				Return(tt.bridges, nil)
 
 			// Setup L2 bridge sync mocks (for rollup exit root)
 			mockL2BridgeSync.On("GetLastProcessedBlock", mock.Anything).Return(uint64(100), nil)
-			mockL2BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).Return([]bridgesync.Bridge{}, nil)
+			mockL2BridgeSync.On("GetBridges", mock.Anything, uint64(0), mock.AnythingOfType("uint64")).
+				Return([]bridgesync.Bridge{}, nil)
 
 			// Setup L1InfoTree and GER injection mocks
 			if len(tt.bridges) > 0 {

@@ -9,7 +9,7 @@ type Config struct {
 	// Check [here](https://pkg.go.dev/go.uber.org/zap@v1.24.0#NewDevelopmentConfig)
 	Environment LogEnvironment `mapstructure:"Environment" jsonschema:"enum=production,enum=development"`
 	// Level of log. As lower value more logs are going to be generated
-	Level string `mapstructure:"Level" jsonschema:"enum=debug,enum=info,enum=warn,enum=error,enum=dpanic,enum=panic,enum=fatal"` //nolint:lll
+	Level string `mapstructure:"Level"       jsonschema:"enum=debug,enum=info,enum=warn,enum=error,enum=dpanic,enum=panic,enum=fatal"` //nolint:lll
 	// Outputs
 	Outputs []string `mapstructure:"Outputs"`
 }

@@ -41,7 +41,10 @@ func TestBuildAppender(t *testing.T) {
 			globalExitRoot := common.HexToAddress("0x1")
 			rollupManager := common.HexToAddress("0x2")
 			if tt.flags == FlagNone {
-				l1Client.EXPECT().CallContract(mock.Anything, mock.Anything, mock.Anything).Return(nil, tt.mockError).Twice()
+				l1Client.EXPECT().
+					CallContract(mock.Anything, mock.Anything, mock.Anything).
+					Return(nil, tt.mockError).
+					Twice()
 			}
 			_, err := buildAppender(l1Client, globalExitRoot, rollupManager, tt.flags)
 			if tt.expectError {

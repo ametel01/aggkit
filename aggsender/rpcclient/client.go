@@ -47,7 +47,10 @@ func (c *Client) GetCertificateHeaderPerHeight(height *uint64) (*types.Certifica
 
 	// Check if the response is an error
 	if response.Error != nil {
-		return nil, fmt.Errorf("error in the response calling aggsender_getCertificateHeaderPerHeight: %v", response.Error)
+		return nil, fmt.Errorf(
+			"error in the response calling aggsender_getCertificateHeaderPerHeight: %v",
+			response.Error,
+		)
 	}
 	cert := types.Certificate{}
 	err = json.Unmarshal(response.Result, &cert)

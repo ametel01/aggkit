@@ -17,7 +17,11 @@ var (
 // PrintVersion prints version info into the provided io.Writer.
 func PrintVersion(w io.Writer) {
 	data := GetVersion()
-	fmt.Fprintf(w, "%s", data.String())
+	if _, err := fmt.Fprintf(w, "%s", data.String()); err != nil {
+		// Handle error - in this case, we can't do much but log or ignore
+		// Since this is a utility function, we'll silently ignore the error
+		_ = err
+	}
 }
 
 type FullVersion struct {

@@ -31,7 +31,11 @@ func checkSMCIsRollupManager(rollupManagerAddr common.Address,
 	if err != nil {
 		return fmt.Errorf("failed sanity check for RollupManager(%s) SC. Err: %w", rollupManagerAddr.String(), err)
 	}
-	log.Infof("sanity check RollupManager(%s) SC OK. Bridge address: %s", rollupManagerAddr.String(), bridgeAddr.String())
+	log.Infof(
+		"sanity check RollupManager(%s) SC OK. Bridge address: %s",
+		rollupManagerAddr.String(),
+		bridgeAddr.String(),
+	)
 	return nil
 }
 
@@ -51,7 +55,11 @@ func sanityCheckContracts(globalExitRoot, rollupManager common.Address,
 	errGER := checkSMCIsGlobalExitRoot(globalExitRoot, gerContract)
 	errRollup := checkSMCIsRollupManager(rollupManager, rollupManagerContract)
 	if errGER != nil || errRollup != nil {
-		err := fmt.Errorf("sanityCheckContracts: fails sanity check contracts. ErrGER: %w, ErrRollup: %w", errGER, errRollup)
+		err := fmt.Errorf(
+			"sanityCheckContracts: fails sanity check contracts. ErrGER: %w, ErrRollup: %w",
+			errGER,
+			errRollup,
+		)
 		log.Error(err)
 		return err
 	}

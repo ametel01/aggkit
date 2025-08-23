@@ -138,7 +138,9 @@ func Test_processor_GetL1InfoTreeMerkleProof(t *testing.T) {
 			getProcessor: func(t *testing.T) *processor {
 				t.Helper()
 
-				p, err := newProcessor(path.Join(t.TempDir(), "l1infotreesyncTest_processor_GetL1InfoTreeMerkleProof_1.sqlite"))
+				p, err := newProcessor(
+					path.Join(t.TempDir(), "l1infotreesyncTest_processor_GetL1InfoTreeMerkleProof_1.sqlite"),
+				)
 				require.NoError(t, err)
 
 				return p
@@ -151,7 +153,9 @@ func Test_processor_GetL1InfoTreeMerkleProof(t *testing.T) {
 			getProcessor: func(t *testing.T) *processor {
 				t.Helper()
 
-				p, err := newProcessor(path.Join(t.TempDir(), "l1infotreesyncTest_processor_GetL1InfoTreeMerkleProof_2.sqlite"))
+				p, err := newProcessor(
+					path.Join(t.TempDir(), "l1infotreesyncTest_processor_GetL1InfoTreeMerkleProof_2.sqlite"),
+				)
 				require.NoError(t, err)
 
 				info := &UpdateL1InfoTree{
@@ -267,7 +271,9 @@ func Test_processor_Reorg(t *testing.T) {
 }
 
 func TestProcessBlockUpdateL1InfoTreeV2DontMatchTree(t *testing.T) {
-	sut, err := newProcessor(path.Join(t.TempDir(), "l1infotreesyncTestProcessBlockUpdateL1InfoTreeV2DontMatchTree.sqlite"))
+	sut, err := newProcessor(
+		path.Join(t.TempDir(), "l1infotreesyncTestProcessBlockUpdateL1InfoTreeV2DontMatchTree.sqlite"),
+	)
 	require.NoError(t, err)
 	block := sync.Block{
 		Num: 10,

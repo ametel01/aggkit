@@ -36,10 +36,10 @@ func NewAggchainProofClient(cfg *aggkitgrpc.ClientConfig) (*AggchainProofClient,
 
 func (c *AggchainProofClient) GenerateAggchainProof(ctx context.Context,
 	req *types.AggchainProofRequest) (*types.AggchainProof, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), c.grpcClientCfg.RequestTimeout.Duration)
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.grpcClientCfg.RequestTimeout.Duration)
 	defer cancel()
 	request := convertAggchainProofRequestToGrpcRequest(req)
-	resp, err := c.client.GenerateAggchainProof(ctx, request)
+	resp, err := c.client.GenerateAggchainProof(timeoutCtx, request)
 	if err != nil {
 		return nil, aggkitgrpc.RepackGRPCErrorWithDetails(err)
 	}
@@ -137,7 +137,9 @@ func convertAggchainProofRequestToGrpcRequest(
 			BlockIndex:  uint64(v.BlockIndex),
 			ProvenInsertedGer: &aggkitProverV1Proto.ProvenInsertedGER{
 				ProofGerL1Root: &agglayerInteropTypesV1Proto.MerkleProof{
-					Root:     &agglayerInteropTypesV1Proto.FixedBytes32{Value: v.ProvenInsertedGERLeaf.ProofGERToL1Root.Root[:]},
+					Root: &agglayerInteropTypesV1Proto.FixedBytes32{
+						Value: v.ProvenInsertedGERLeaf.ProofGERToL1Root.Root[:],
+					},
 					Siblings: convertedProofGerL1RootSiblings,
 				},
 				L1Leaf: &agglayerInteropTypesV1Proto.L1InfoTreeLeafWithContext{

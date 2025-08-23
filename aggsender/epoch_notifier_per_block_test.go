@@ -102,7 +102,10 @@ func TestEpochStep(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, event := testData.sut.step(tt.initialStatus, types.EventNewBlock{BlockNumber: tt.blockNumber, BlockFinalityType: aggkittypes.LatestBlock})
+			_, event := testData.sut.step(
+				tt.initialStatus,
+				types.EventNewBlock{BlockNumber: tt.blockNumber, BlockFinalityType: aggkittypes.LatestBlock},
+			)
 			require.Equal(t, tt.expectedEvent, event != nil)
 			if event != nil {
 				require.Equal(t, tt.expectedEventEpoch, event.Epoch, "Epoch")
@@ -151,7 +154,10 @@ func TestStepSameEpoch(t *testing.T) {
 		lastBlockSeen:   100,
 		waitingForEpoch: testData.sut.epochNumber(100),
 	}
-	newStatus, _ := testData.sut.step(status, types.EventNewBlock{BlockNumber: 103, BlockFinalityType: aggkittypes.LatestBlock})
+	newStatus, _ := testData.sut.step(
+		status,
+		types.EventNewBlock{BlockNumber: 103, BlockFinalityType: aggkittypes.LatestBlock},
+	)
 	require.Equal(t, uint64(103), newStatus.lastBlockSeen)
 	require.Equal(t, status.waitingForEpoch, newStatus.waitingForEpoch)
 }
@@ -162,7 +168,10 @@ func TestStepNotifyEpoch(t *testing.T) {
 		lastBlockSeen:   100,
 		waitingForEpoch: testData.sut.epochNumber(100),
 	}
-	status, _ = testData.sut.step(status, types.EventNewBlock{BlockNumber: 109, BlockFinalityType: aggkittypes.LatestBlock})
+	status, _ = testData.sut.step(
+		status,
+		types.EventNewBlock{BlockNumber: 109, BlockFinalityType: aggkittypes.LatestBlock},
+	)
 	require.Equal(t, uint64(109), status.lastBlockSeen)
 	require.Equal(t, uint64(12), status.waitingForEpoch)
 }
@@ -193,15 +202,24 @@ func TestBlockBeforeEpoch(t *testing.T) {
 		lastBlockSeen:   104,
 		waitingForEpoch: testData.sut.epochNumber(104),
 	}
-	newStatus, _ := testData.sut.step(status, types.EventNewBlock{BlockNumber: 104, BlockFinalityType: aggkittypes.LatestBlock})
+	newStatus, _ := testData.sut.step(
+		status,
+		types.EventNewBlock{BlockNumber: 104, BlockFinalityType: aggkittypes.LatestBlock},
+	)
 	// We are previous block of first epoch, so we should do nothing
 	require.Equal(t, status, newStatus)
 	status = newStatus
 	// First block of first epoch
-	newStatus, _ = testData.sut.step(status, types.EventNewBlock{BlockNumber: 105, BlockFinalityType: aggkittypes.LatestBlock})
+	newStatus, _ = testData.sut.step(
+		status,
+		types.EventNewBlock{BlockNumber: 105, BlockFinalityType: aggkittypes.LatestBlock},
+	)
 	require.Equal(t, uint64(105), newStatus.lastBlockSeen)
 	// Near end  first epoch
-	newStatus, _ = testData.sut.step(status, types.EventNewBlock{BlockNumber: 114, BlockFinalityType: aggkittypes.LatestBlock})
+	newStatus, _ = testData.sut.step(
+		status,
+		types.EventNewBlock{BlockNumber: 114, BlockFinalityType: aggkittypes.LatestBlock},
+	)
 	require.Equal(t, uint64(114), newStatus.lastBlockSeen)
 }
 

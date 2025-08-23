@@ -19,7 +19,11 @@ func TestMigration0001(t *testing.T) {
 	require.NoError(t, err)
 	db, err := db.NewSQLiteDB(dbPath)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close database: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)
@@ -72,7 +76,11 @@ func TestMigration0002(t *testing.T) {
 	require.NoError(t, err)
 	db, err := db.NewSQLiteDB(dbPath)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close database: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)
@@ -212,7 +220,11 @@ func TestMigrations0003(t *testing.T) {
 	require.NoError(t, err)
 	db, err := db.NewSQLiteDB(dbPath)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close database: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)

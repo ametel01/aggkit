@@ -9,7 +9,7 @@ type Config struct {
 	// DBPath path of the DB
 	DBPath string `mapstructure:"DBPath"`
 	// BlockFinality indicates the status of the blocks that will be queried in order to sync
-	BlockFinality string `jsonschema:"enum=LatestBlock, enum=SafeBlock, enum=PendingBlock, enum=FinalizedBlock, enum=EarliestBlock" mapstructure:"BlockFinality"` //nolint:lll
+	BlockFinality string `mapstructure:"BlockFinality"                      jsonschema:"enum=LatestBlock, enum=SafeBlock, enum=PendingBlock, enum=FinalizedBlock, enum=EarliestBlock"` //nolint:lll
 	// InitialBlockNum is the first block that will be queried when starting the synchronization from scratch.
 	// It should be a number equal or bellow the creation of the bridge contract
 	InitialBlockNum uint64 `mapstructure:"InitialBlockNum"`
@@ -31,5 +31,5 @@ type Config struct {
 	// SyncMode denotes should the latest global exit root be determined
 	// by querying the global exit root map (which is common way for FEP chains)
 	// or the events emitted by sovereign chains (which is a common way for PP chains)
-	SyncMode SyncMode `jsonschema:"enum=FEP, enum=PP" mapstructure:"SyncMode"`
+	SyncMode SyncMode `mapstructure:"SyncMode"                           jsonschema:"enum=FEP, enum=PP"`
 }

@@ -3,15 +3,19 @@ package bridgeservice
 import (
 	"encoding/hex"
 	"fmt"
-	"strconv"
 	"math/big"
+	"strconv"
 
 	bridgetypes "github.com/agglayer/aggkit/bridgeservice/types"
 	"github.com/agglayer/aggkit/bridgesync"
 	aggkitcommon "github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/l1infotreesync"
-	"github.com/gin-gonic/gin"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gin-gonic/gin"
+)
+
+const (
+	claimTypeMessage = "message"
 )
 
 const (
@@ -129,23 +133,21 @@ func NewClaimResponse(claim *bridgesync.Claim) *bridgetypes.ClaimResponse {
 	return NewClaimResponseWithBridge(claim, nil)
 }
 
-
 // NewClaimResponseWithBridge creates ClaimResponse instance with optional bridge data for more accurate type detection
 func NewClaimResponseWithBridge(claim *bridgesync.Claim, bridge *bridgesync.Bridge) *bridgetypes.ClaimResponse {
 	claimType := "asset"
-	
+
 	// Primary check: Use the IsMessage field which is set correctly during claim processing
 	if claim.IsMessage {
-		claimType = "message"
+		claimType = claimTypeMessage
 	} else {
-		// Fallback heuristic for backward compatibility: 
+		// Fallback heuristic for backward compatibility:
 		// Message bridges typically have amount = 0 and destination = BridgeExtension contract (same as origin)
 		zero := big.NewInt(0)
 		if claim.Amount.Cmp(zero) == 0 && claim.DestinationAddress == claim.OriginAddress {
-			claimType = "message"
+			claimType = claimTypeMessage
 		}
 	}
-
 
 	return &bridgetypes.ClaimResponse{
 		GlobalIndex:        bridgetypes.BigIntString(claim.GlobalIndex.String()),
@@ -169,7 +171,7 @@ func NewClaimResponseWithBridge(claim *bridgesync.Claim, bridge *bridgesync.Brid
 func NewPendingClaimResponse(bridge *bridgesync.Bridge) *bridgetypes.ClaimResponse {
 	claimType := "asset"
 	if bridge.LeafType == 1 {
-		claimType = "message"
+		claimType = claimTypeMessage
 	}
 
 	// For pending claims, we need to calculate the global index
@@ -194,9 +196,11 @@ func NewPendingClaimResponse(bridge *bridgesync.Bridge) *bridgetypes.ClaimRespon
 		OriginAddress:      bridgetypes.Address(bridge.OriginAddress.Hex()),
 		OriginNetwork:      bridge.OriginNetwork,
 		BlockTimestamp:     bridge.BlockTimestamp,
-		MainnetExitRoot:    bridgetypes.Hash("0x0000000000000000000000000000000000000000000000000000000000000000"), // Empty for pending
-		Status:             "pending",
-		Type:               claimType,
+		MainnetExitRoot: bridgetypes.Hash(
+			"0x0000000000000000000000000000000000000000000000000000000000000000",
+		), // Empty for pending
+		Status: "pending",
+		Type:   claimType,
 	}
 }
 

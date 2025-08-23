@@ -132,7 +132,9 @@ func TestGetExitRootByIndex(t *testing.T) {
 			name:  "error - failed to fetch exit root",
 			index: 2,
 			mockFn: func(mockSyncer *mocks.L2BridgeSyncer) {
-				mockSyncer.EXPECT().GetExitRootByIndex(ctx, uint32(2)).Return(treetypes.Root{}, errors.New("some error"))
+				mockSyncer.EXPECT().
+					GetExitRootByIndex(ctx, uint32(2)).
+					Return(treetypes.Root{}, errors.New("some error"))
 			},
 			expectedError: "error getting exit root by index: 2. Error: some error",
 		},

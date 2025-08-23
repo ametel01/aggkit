@@ -72,7 +72,10 @@ func (c *OpNodeClient) OutputAtBlockRoot(number uint64) (common.Hash, error) {
 	var data map[string]interface{}
 	err = json.Unmarshal(response.Result, &data)
 	if err != nil {
-		return emptyAnswer, fmt.Errorf("opNodeClient error calling optimism_outputAtBlock. Unmarshal json fails. Err:%w", err)
+		return emptyAnswer, fmt.Errorf(
+			"opNodeClient error calling optimism_outputAtBlock. Unmarshal json fails. Err:%w",
+			err,
+		)
 	}
 	if outputRoot, ok := data["outputRoot"]; ok {
 		str, ok := outputRoot.(string)

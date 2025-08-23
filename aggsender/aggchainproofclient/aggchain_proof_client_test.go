@@ -84,7 +84,8 @@ func TestGenerateAggchainProof_Error(t *testing.T) {
 
 	expectedError := errors.New("Generate error")
 
-	mockClient.On("GenerateAggchainProof", mock.Anything, mock.Anything).Return((*aggkitProverV1Proto.GenerateAggchainProofResponse)(nil), expectedError)
+	mockClient.On("GenerateAggchainProof", mock.Anything, mock.Anything).
+		Return((*aggkitProverV1Proto.GenerateAggchainProofResponse)(nil), expectedError)
 
 	request := &types.AggchainProofRequest{
 		LastProvenBlock:    300,

@@ -311,7 +311,11 @@ func Test_Storage(t *testing.T) {
 		certificatesFromDB, err = storage.GetCertificateHeadersByStatus(statuses)
 		require.NoError(t, err)
 		require.Len(t, certificatesFromDB, 2)
-		require.ElementsMatch(t, []*types.CertificateHeader{certificates[1].Header, certificates[2].Header}, certificatesFromDB)
+		require.ElementsMatch(
+			t,
+			[]*types.CertificateHeader{certificates[1].Header, certificates[2].Header},
+			certificatesFromDB,
+		)
 
 		require.NoError(t, storage.clean())
 	})
@@ -337,7 +341,15 @@ func Test_Storage(t *testing.T) {
 		// Update the status of the certificate
 		certificate.Header.Status = agglayertypes.Settled
 		certificate.Header.UpdatedAt = updateTime + 1
-		require.NoError(t, storage.UpdateCertificateStatus(ctx, certificate.Header.CertificateID, certificate.Header.Status, certificate.Header.UpdatedAt))
+		require.NoError(
+			t,
+			storage.UpdateCertificateStatus(
+				ctx,
+				certificate.Header.CertificateID,
+				certificate.Header.Status,
+				certificate.Header.UpdatedAt,
+			),
+		)
 
 		// Fetch the certificate and verify the status has been updated
 		certificateFromDB, err := storage.GetCertificateByHeight(certificate.Header.Height)
@@ -896,7 +908,9 @@ func Test_SaveNonAcceptedCertificate(t *testing.T) {
 				newTxer = func(_ context.Context, _ dbtypes.DBer) (dbtypes.Txer, error) {
 					return txnMock, nil
 				}
-				txnMock.EXPECT().Exec(mock.Anything, aggkitcommon.AGGSENDER, nonAcceptedCertKey, mock.Anything, mock.Anything).Return(nil, nil)
+				txnMock.EXPECT().
+					Exec(mock.Anything, aggkitcommon.AGGSENDER, nonAcceptedCertKey, mock.Anything, mock.Anything).
+					Return(nil, nil)
 				txnMock.EXPECT().Commit().Return(errors.New("failed to commit tx"))
 				txnMock.EXPECT().Rollback().Return(errors.New("failed to rollback tx"))
 			},
@@ -936,16 +950,30 @@ func Test_SaveNonAcceptedCertificate(t *testing.T) {
 
 			if tc.expectedError == "" {
 				nonAcceptedCert, err := storage.GetNonAcceptedCertificate()
-				require.NoError(t, err, "should retrieve one non-accepted certificate from DB even though multiple were saved")
+				require.NoError(
+					t,
+					err,
+					"should retrieve one non-accepted certificate from DB even though multiple were saved",
+				)
 
 				var certificate agglayertypes.Certificate
 				if err = json.Unmarshal([]byte(nonAcceptedCert.SignedCertificate), &certificate); err != nil {
 					t.Fatalf("error unmarshalling non-accepted certificate: %v", err)
 				}
 
-				require.Equal(t, tc.certificates[len(tc.certificates)-1], &certificate, "last saved certificate should match the one retrieved from DB")
+				require.Equal(
+					t,
+					tc.certificates[len(tc.certificates)-1],
+					&certificate,
+					"last saved certificate should match the one retrieved from DB",
+				)
 				require.Equal(t, tc.certError, nonAcceptedCert.Error, "error message should match the expected error")
-				require.Equal(t, createdAt, nonAcceptedCert.CreatedAt, "created at timestamp should match the expected value")
+				require.Equal(
+					t,
+					createdAt,
+					nonAcceptedCert.CreatedAt,
+					"created at timestamp should match the expected value",
+				)
 			}
 		})
 	}

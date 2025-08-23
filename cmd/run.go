@@ -94,7 +94,13 @@ func start(cliCtx *cli.Context) error {
 
 	l1InfoTreeSync := runL1InfoTreeSyncerIfNeeded(cliCtx.Context, components, *cfg, l1Client, reorgDetectorL1)
 	claimSponsorFwd := runClaimSponsorIfNeeded(cliCtx.Context, components, l2Client, cfg.ClaimSponsor, l1InfoTreeSync)
-	claimSponsorRev := runClaimSponsorIfNeeded(cliCtx.Context, components, l1Client, cfg.ClaimSponsorReverse, l1InfoTreeSync)
+	claimSponsorRev := runClaimSponsorIfNeeded(
+		cliCtx.Context,
+		components,
+		l1Client,
+		cfg.ClaimSponsorReverse,
+		l1InfoTreeSync,
+	)
 	var autosponsorL1, autosponsorL2 bridgesync.ClaimEnqueuer
 	if cfg.ClaimSponsor.ClaimAll {
 		autosponsorL1 = claimSponsorFwd
@@ -112,7 +118,15 @@ func start(cliCtx *cli.Context) error {
 	for _, component := range components {
 		switch component {
 		case aggkitcommon.AGGORACLE:
-			aggOracle := createAggoracle(rollupDataQuerier, *cfg, l1Client, l2Client, l1InfoTreeSync, l1BridgeSync, l2BridgeSync)
+			aggOracle := createAggoracle(
+				rollupDataQuerier,
+				*cfg,
+				l1Client,
+				l2Client,
+				l1InfoTreeSync,
+				l1BridgeSync,
+				l2BridgeSync,
+			)
 
 			// Handle different oracle types (sandbox vs normal)
 			switch oracle := aggOracle.(type) {

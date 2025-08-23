@@ -3,6 +3,7 @@ package bridgesync
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/0xPolygon/cdk-contracts-tooling/contracts/fep/etrog/polygonzkevmbridge"
@@ -57,18 +58,28 @@ const (
 
 	// methodIDLength is the length of the method ID in bytes
 	methodIDLength = 4
+
+	// Chain ID constants
+	chainIDEthereum = 1    // L1 Ethereum
+	chainIDL2       = 1101 // L2 chain ID
+	chainIDL3       = 137  // L3 chain ID
+
+	// Network ID constants for multi-L2 setup
+	networkIDMainnet = 0
+	networkIDL2      = 1
+	networkIDL3      = 2
 )
 
 // getDestinationNetwork maps chain ID to network ID for destination network
 func getDestinationNetwork(chainID uint64) uint32 {
 	// Map chain IDs to network IDs for multi-L2 setup
 	switch chainID {
-	case 1:    // L1 Ethereum
-		return 0
-	case 1101: // L2 chain ID 
-		return 1
-	case 137:  // L3 chain ID  
-		return 2
+	case chainIDEthereum:
+		return networkIDMainnet
+	case chainIDL2:
+		return networkIDL2
+	case chainIDL3:
+		return networkIDL3
 	default:
 		// Fallback: use chain ID as network ID for unknown chains
 		return uint32(chainID)
@@ -163,7 +174,7 @@ func buildBridgeEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2
 // buildClaimEventHandler creates a handler for the Claim event log.
 func buildClaimEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2,
 	client aggkittypes.EthClienter, bridgeAddr common.Address, syncFullClaims bool, logger *logger.Logger,
-	syncerType BridgeSyncerType,
+	_ BridgeSyncerType,
 ) func(*sync.EVMBlock, types.Log) error {
 	return func(b *sync.EVMBlock, l types.Log) error {
 		claimEvent, err := contract.ParseClaimEvent(l)
@@ -189,7 +200,11 @@ func buildClaimEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2,
 		if mainnetFlag {
 			rollupIndex = 0
 		}
-		globalIndex := aggkitcommon.GenerateGlobalIndex(mainnetFlag, rollupIndex, uint32(claimEvent.GlobalIndex.Uint64()))
+		globalIndex := aggkitcommon.GenerateGlobalIndex(
+			mainnetFlag,
+			rollupIndex,
+			uint32(claimEvent.GlobalIndex.Uint64()),
+		)
 
 		claim := &Claim{
 			BlockNum:           b.Num,
@@ -220,7 +235,7 @@ func buildClaimEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2,
 // buildClaimEventHandlerPreEtrog creates a handler for the Claim event log for pre-Etrog contracts.
 func buildClaimEventHandlerPreEtrog(contract *polygonzkevmbridge.Polygonzkevmbridge,
 	client aggkittypes.EthClienter, bridgeAddr common.Address, syncFullClaims bool, logger *logger.Logger,
-	syncerType BridgeSyncerType,
+	_ BridgeSyncerType,
 ) func(*sync.EVMBlock, types.Log) error {
 	return func(b *sync.EVMBlock, l types.Log) error {
 		claimEvent, err := contract.ParseClaimEvent(l)
@@ -246,8 +261,8 @@ func buildClaimEventHandlerPreEtrog(contract *polygonzkevmbridge.Polygonzkevmbri
 		if mainnetFlag {
 			rollupIndex = 0
 		}
-		globalIndex := aggkitcommon.GenerateGlobalIndex(mainnetFlag, rollupIndex, uint32(claimEvent.Index))
-		
+		globalIndex := aggkitcommon.GenerateGlobalIndex(mainnetFlag, rollupIndex, claimEvent.Index)
+
 		claim := &Claim{
 			BlockNum:           b.Num,
 			BlockPos:           uint64(l.Index),
@@ -321,7 +336,11 @@ func buildSetSovereignTokenHandler(contract *bridgel2sovereignchain.Bridgel2sove
 
 		foundCall, err := extractCall(client, bridgeAddr, l.TxHash, logger)
 		if err != nil {
-			return fmt.Errorf("failed to extract the SetSovereignTokenAddress event calldata (tx hash: %s): %w", l.TxHash, err)
+			return fmt.Errorf(
+				"failed to extract the SetSovereignTokenAddress event calldata (tx hash: %s): %w",
+				l.TxHash,
+				err,
+			)
 		}
 
 		b.Events = append(b.Events, Event{TokenMapping: &TokenMapping{
@@ -352,7 +371,11 @@ func buildMigrateLegacyTokenHandler(contract *bridgel2sovereignchain.Bridgel2sov
 
 		foundCall, err := extractCall(client, bridgeAddr, l.TxHash, logger)
 		if err != nil {
-			return fmt.Errorf("failed to extract the MigrateLegacyToken event calldata (tx hash: %s): %w", l.TxHash, err)
+			return fmt.Errorf(
+				"failed to extract the MigrateLegacyToken event calldata (tx hash: %s): %w",
+				l.TxHash,
+				err,
+			)
 		}
 
 		b.Events = append(b.Events, Event{LegacyTokenMigration: &LegacyTokenMigration{
@@ -499,7 +522,7 @@ func (c *Claim) setClaimCalldata(
 		}, logger)
 
 	// If no valid claim calldata is found, this is normal - don't treat it as an error
-	if err == db.ErrNotFound {
+	if errors.Is(err, db.ErrNotFound) {
 		return nil
 	}
 
@@ -591,4 +614,3 @@ func (c *Claim) tryDecodeClaimCalldata(senderAddr common.Address, input []byte) 
 		return false, nil
 	}
 }
-

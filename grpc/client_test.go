@@ -71,7 +71,10 @@ func TestRepackGRPCErrorWithDetails(t *testing.T) {
 		expectedErr := GRPCError{
 			Code:    stWithDetails.Code(),
 			Message: stWithDetails.Message(),
-			Details: []string{"Reason: InvalidInput, Domain: example.com. , Metadata: {field1: value1}", "Reason: AnotherReason, Domain: another.com. , Metadata: {field2: value2}"},
+			Details: []string{
+				"Reason: InvalidInput, Domain: example.com. , Metadata: {field1: value1}",
+				"Reason: AnotherReason, Domain: another.com. , Metadata: {field2: value2}",
+			},
 		}
 
 		result := RepackGRPCErrorWithDetails(stWithDetails.Err())

@@ -25,7 +25,11 @@ func TestMigration0001(t *testing.T) {
 	require.NoError(t, err)
 	db, err := db.NewSQLiteDB(dbPath)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close database: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)
@@ -87,7 +91,11 @@ func TestMigrations_UpDown(t *testing.T) {
 
 	conn, err := sql.Open("sqlite3", dbPath)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Errorf("failed to close connection: %v", err)
+		}
+	}()
 
 	// Check that tables exist after Up
 	tables := []string{"block", "imported_global_exit_root"}

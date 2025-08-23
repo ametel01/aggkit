@@ -29,8 +29,11 @@ func NewOptimisticModeQuerierFromContract(aggchainFEPAddr common.Address,
 func (q *OptimisticModeQuerierFromContract) IsOptimisticModeOn() (bool, error) {
 	optimisticMode, err := q.aggchainFEPContract.OptimisticMode(nil)
 	if err != nil {
-		return false, fmt.Errorf("optimisticModeQuerierFromContract: error checking optimisticMode in contract %s. Err: %w",
-			q.aggchainFEPAddr, err)
+		return false, fmt.Errorf(
+			"optimisticModeQuerierFromContract: error checking optimisticMode in contract %s. Err: %w",
+			q.aggchainFEPAddr,
+			err,
+		)
 	}
 	return optimisticMode, nil
 }

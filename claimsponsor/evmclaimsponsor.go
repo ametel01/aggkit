@@ -36,14 +36,6 @@ const (
 	NETWORK_ID_AGGLAYER_2 = 2
 )
 
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 type EthClienter interface {
 	ethereum.GasEstimator
 	bind.ContractBackend
@@ -51,7 +43,10 @@ type EthClienter interface {
 
 type EthTxManager interface {
 	Remove(ctx context.Context, id common.Hash) error
-	ResultsByStatus(ctx context.Context, statuses []ethtxtypes.MonitoredTxStatus) ([]ethtxtypes.MonitoredTxResult, error)
+	ResultsByStatus(
+		ctx context.Context,
+		statuses []ethtxtypes.MonitoredTxStatus,
+	) ([]ethtxtypes.MonitoredTxResult, error)
 	Result(ctx context.Context, id common.Hash) (ethtxtypes.MonitoredTxResult, error)
 	Add(ctx context.Context, to *common.Address, value *big.Int, data []byte,
 		gasOffset uint64, sidecar *types.BlobTxSidecar) (common.Hash, error)
