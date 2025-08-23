@@ -36,10 +36,10 @@ func NewAggchainProofClient(cfg *aggkitgrpc.ClientConfig) (*AggchainProofClient,
 
 func (c *AggchainProofClient) GenerateAggchainProof(ctx context.Context,
 	req *types.AggchainProofRequest) (*types.AggchainProof, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), c.grpcClientCfg.RequestTimeout.Duration)
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.grpcClientCfg.RequestTimeout.Duration)
 	defer cancel()
 	request := convertAggchainProofRequestToGrpcRequest(req)
-	resp, err := c.client.GenerateAggchainProof(ctx, request)
+	resp, err := c.client.GenerateAggchainProof(timeoutCtx, request)
 	if err != nil {
 		return nil, aggkitgrpc.RepackGRPCErrorWithDetails(err)
 	}

@@ -1423,9 +1423,10 @@ func TestProcessor_GetTokenMappings(t *testing.T) {
 	require.NoError(t, err)
 
 	allTokenMappings := make([]*TokenMapping, 0, tokenMappingsCount)
-	for i := tokenMappingsCount - 1; i >= 0; i-- {
+	for i := 0; i < tokenMappingsCount; i++ {
 		tokenMappingEvt := &TokenMapping{
 			BlockNum:            uint64(i + 1),
+			BlockPos:            0, // All events are at position 0 in their respective blocks
 			OriginNetwork:       uint32(i),
 			OriginTokenAddress:  common.HexToAddress(fmt.Sprintf("%d", i)),
 			WrappedTokenAddress: common.HexToAddress(fmt.Sprintf("%d", i+1)),
@@ -1445,7 +1446,8 @@ func TestProcessor_GetTokenMappings(t *testing.T) {
 			Events: []interface{}{Event{TokenMapping: tokenMappingEvt}},
 		}
 
-		allTokenMappings = append(allTokenMappings, tokenMappingEvt)
+		// Insert at the beginning to build slice in descending order (to match DB query ORDER BY block_num DESC)
+		allTokenMappings = append([]*TokenMapping{tokenMappingEvt}, allTokenMappings...)
 
 		// insert TokenMapping event to the db
 		err = p.ProcessBlock(context.Background(), block)

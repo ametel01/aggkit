@@ -19,7 +19,11 @@ func TestMigration0001(t *testing.T) {
 	require.NoError(t, err)
 	db, err := db.NewSQLiteDB(dbPath)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close database: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)
@@ -72,7 +76,11 @@ func TestMigration0002(t *testing.T) {
 	require.NoError(t, err)
 	db, err := db.NewSQLiteDB(dbPath)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close database: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)
@@ -106,7 +114,7 @@ func TestMigration0002(t *testing.T) {
 			metadata,
 			deposit_count,
 			block_timestamp,
-			tx_hash,
+			bridge_tx_hash,
 			from_address,
 			is_native_token
 		) VALUES (1, 0, 0, 0, '0x3', 0, '0x0000', 0, NULL, 0, 1739270804, '0xabcd', '0x123', true);
@@ -123,9 +131,10 @@ func TestMigration0002(t *testing.T) {
 			metadata,
 			is_message,
 			block_timestamp,
-			tx_hash,
+			bridge_tx_hash,
+			claim_tx_hash,
 			from_address
-		) VALUES (1, 0, 0, 0, '0x3', '0x0000', 0, 0, NULL, FALSE, 1739270804, '0xabcd', '0x123');
+		) VALUES (1, 0, 0, 0, '0x3', '0x0000', 0, 0, NULL, FALSE, 1739270804, '0x0000', '0xabcd', '0x123');
 	`)
 	require.NoError(t, err)
 	err = tx.Commit()
@@ -211,7 +220,11 @@ func TestMigrations0003(t *testing.T) {
 	require.NoError(t, err)
 	db, err := db.NewSQLiteDB(dbPath)
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close database: %v", err)
+		}
+	}()
 
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)

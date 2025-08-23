@@ -568,8 +568,13 @@ func (b *BridgeService) GetClaimsHandler(c *gin.Context) {
 	// Combine completed and pending claims
 	var claimResponses []*types.ClaimResponse
 
-	// Add completed claims
-	completedResponses := aggkitcommon.MapSlice(completedClaims, NewClaimResponse)
+	// Add completed claims with enhanced type detection
+	completedResponses := make([]*types.ClaimResponse, 0, len(completedClaims))
+	for _, claim := range completedClaims {
+		// Use simplified logic based on claim characteristics
+		response := NewClaimResponseWithBridge(claim, nil)
+		completedResponses = append(completedResponses, response)
+	}
 	claimResponses = append(claimResponses, completedResponses...)
 
 	// Add pending claims
@@ -1349,6 +1354,7 @@ func (b *BridgeService) getFirstL1InfoTreeIndexForL1Bridge(ctx context.Context, 
 	bestResult := lastInfo
 	lowerLimit := firstInfo.BlockNumber
 	upperLimit := lastInfo.BlockNumber
+binarySearchLoop:
 	for lowerLimit <= upperLimit {
 		targetBlock := lowerLimit + ((upperLimit - lowerLimit) / binarySearchDivider)
 		targetInfo, err := b.l1InfoTree.GetFirstInfoAfterBlock(targetBlock)
@@ -1359,12 +1365,13 @@ func (b *BridgeService) getFirstL1InfoTreeIndexForL1Bridge(ctx context.Context, 
 		if err != nil {
 			return 0, err
 		}
-		if root.Index < depositCount {
+		switch {
+		case root.Index < depositCount:
 			lowerLimit = targetBlock + 1
-		} else if root.Index == depositCount {
+		case root.Index == depositCount:
 			bestResult = targetInfo
-			break
-		} else {
+			break binarySearchLoop
+		default:
 			bestResult = targetInfo
 			upperLimit = targetBlock - 1
 		}
@@ -1417,6 +1424,7 @@ func (b *BridgeService) getFirstL1InfoTreeIndexForL2Bridge(ctx context.Context, 
 	bestResult := lastVerified
 	lowerLimit := firstVerified.BlockNumber
 	upperLimit := lastVerified.BlockNumber
+binarySearchLoop2:
 	for lowerLimit <= upperLimit {
 		targetBlock := lowerLimit + ((upperLimit - lowerLimit) / binarySearchDivider)
 		targetVerified, err := b.l1InfoTree.GetFirstVerifiedBatchesAfterBlock(b.networkID, targetBlock)
@@ -1427,12 +1435,13 @@ func (b *BridgeService) getFirstL1InfoTreeIndexForL2Bridge(ctx context.Context, 
 		if err != nil {
 			return 0, err
 		}
-		if root.Index < depositCount {
+		switch {
+		case root.Index < depositCount:
 			lowerLimit = targetBlock + 1
-		} else if root.Index == depositCount {
+		case root.Index == depositCount:
 			bestResult = targetVerified
-			break
-		} else {
+			break binarySearchLoop2
+		default:
 			bestResult = targetVerified
 			upperLimit = targetBlock - 1
 		}

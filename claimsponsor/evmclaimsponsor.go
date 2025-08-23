@@ -36,14 +36,6 @@ const (
 	NETWORK_ID_AGGLAYER_2 = 2
 )
 
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 type EthClienter interface {
 	ethereum.GasEstimator
 	bind.ContractBackend

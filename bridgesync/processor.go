@@ -41,6 +41,11 @@ const (
 
 	// legacyTokenMigrationTableName is the name of the table that stores legacy token migration events
 	legacyTokenMigrationTableName = "legacy_token_migration"
+
+	// Hash length constants
+	hashLengthRaw         = 32 // Raw byte length of hash
+	hashLengthHex         = 64 // Hex string length without 0x prefix
+	hashLengthHexPrefixed = 66 // Hex string length with 0x prefix
 )
 
 var (
@@ -60,7 +65,7 @@ type Bridge struct {
 	BlockNum           uint64         `meddler:"block_num"`
 	BlockPos           uint64         `meddler:"block_pos"`
 	FromAddress        common.Address `meddler:"from_address,address"`
-	TxHash             common.Hash    `meddler:"tx_hash,hash"`
+	BridgeTxHash       common.Hash    `meddler:"bridge_tx_hash,hash"`
 	Calldata           []byte         `meddler:"calldata"`
 	BlockTimestamp     uint64         `meddler:"block_timestamp"`
 	LeafType           uint8          `meddler:"leaf_type"`
@@ -108,7 +113,8 @@ type Claim struct {
 	BlockNum            uint64         `meddler:"block_num"`
 	BlockPos            uint64         `meddler:"block_pos"`
 	FromAddress         common.Address `meddler:"from_address,address"`
-	TxHash              common.Hash    `meddler:"tx_hash,hash"`
+	BridgeTxHash        common.Hash    `meddler:"bridge_tx_hash,hash"`
+	ClaimTxHash         common.Hash    `meddler:"claim_tx_hash,hash"`
 	GlobalIndex         *big.Int       `meddler:"global_index,bigint"`
 	OriginNetwork       uint32         `meddler:"origin_network"`
 	OriginAddress       common.Address `meddler:"origin_address"`
@@ -123,6 +129,51 @@ type Claim struct {
 	Metadata            []byte         `meddler:"metadata"`
 	IsMessage           bool           `meddler:"is_message"`
 	BlockTimestamp      uint64         `meddler:"block_timestamp"`
+}
+
+// decodeEtrogCalldataManual manually decodes claim calldata when ABI method lookup fails
+// This handles cases where the Go bindings don't match the actual contract methods
+func (c *Claim) decodeEtrogCalldataManual(senderAddr common.Address, inputData []byte) (bool, error) {
+	// Manual ABI decoding for claimAsset/claimMessage signature:
+	// claimAsset/claimMessage(uint256,bytes32,bytes32,uint32,address,uint32,address,uint256,bytes)
+	// This requires 9 parameters of specific types
+
+	// Expected parameter sizes (in bytes):
+	// uint256: 32, bytes32: 32, bytes32: 32, uint32: 32, address: 32, uint32: 32, address: 32, uint256: 32, bytes: variable
+
+	if len(inputData) < 32*8 { // At least 8 fixed parameters * 32 bytes each
+		return false, fmt.Errorf("input data too short for manual decode: %d bytes", len(inputData))
+	}
+
+	// Parse globalIndex (first parameter)
+	globalIndexBytes := inputData[0:32]
+	actualGlobalIndex := new(big.Int).SetBytes(globalIndexBytes)
+
+	if actualGlobalIndex.Cmp(c.GlobalIndex) != 0 {
+		// not the claim we're looking for
+		return false, nil
+	}
+
+	// Parse mainnetExitRoot (second parameter)
+	var mainnetExitRoot [32]byte
+	copy(mainnetExitRoot[:], inputData[32:64])
+	c.MainnetExitRoot = mainnetExitRoot
+
+	// Parse rollupExitRoot (third parameter)
+	var rollupExitRoot [32]byte
+	copy(rollupExitRoot[:], inputData[64:96])
+	c.RollupExitRoot = rollupExitRoot
+
+	// Parse destinationNetwork (sixth parameter, skipping originNetwork and originAddress)
+	destinationNetworkBytes := inputData[160:192]
+	destinationNetwork := new(big.Int).SetBytes(destinationNetworkBytes).Uint64()
+	c.DestinationNetwork = uint32(destinationNetwork)
+
+	// Calculate global exit root
+	c.GlobalExitRoot = crypto.Keccak256Hash(c.MainnetExitRoot.Bytes(), c.RollupExitRoot.Bytes())
+	c.FromAddress = senderAddr
+
+	return true, nil
 }
 
 // decodeEtrogCalldata decodes claim calldata for Etrog fork
@@ -433,7 +484,8 @@ func (p *processor) buildBridgesFilterClause(depositCount *uint64, networkIDs []
 	}
 
 	if fromAddress != "" && common.IsHexAddress(fromAddress) {
-		clauses = append(clauses, fmt.Sprintf("UPPER(from_address) LIKE '%s'", fromAddress))
+		clauses = append(clauses, fmt.Sprintf("UPPER(from_address) = UPPER('%s')", 
+			strings.ReplaceAll(fromAddress, "'", "''")))
 	}
 
 	if len(clauses) > 0 {
@@ -592,7 +644,8 @@ func (p *processor) buildPendingClaimsFilterClause(networkIDs []uint32, fromAddr
 	}
 
 	if fromAddress != "" && common.IsHexAddress(fromAddress) {
-		clauses = append(clauses, fmt.Sprintf("UPPER(b.from_address) LIKE '%s'", fromAddress))
+		clauses = append(clauses, fmt.Sprintf("UPPER(b.from_address) = UPPER('%s')", 
+			strings.ReplaceAll(fromAddress, "'", "''")))
 	}
 
 	if len(clauses) > 0 {
@@ -611,7 +664,8 @@ func (p *processor) buildClaimsFilterClause(networkIDs []uint32, fromAddress str
 	}
 
 	if fromAddress != "" && common.IsHexAddress(fromAddress) {
-		clauses = append(clauses, fmt.Sprintf("UPPER(from_address) LIKE '%s'", fromAddress))
+		clauses = append(clauses, fmt.Sprintf("UPPER(from_address) = UPPER('%s')", 
+			strings.ReplaceAll(fromAddress, "'", "''")))
 	}
 
 	if len(clauses) > 0 {
@@ -836,7 +890,16 @@ func (p *processor) ProcessBlock(ctx context.Context, block sync.Block) error {
 				p.log.Errorf("failed to insert bridge event at block %d: %v", block.Num, err)
 				return err
 			}
-			log.Infof("Bridge event has been inserted with transaction hash %s", event.Bridge.TxHash.String())
+
+			log.Infof(
+				"Bridge event inserted: origin_network=%d, destination_network=%d, deposit_count=%d, tx_hash=%s, networkID=%d",
+				event.Bridge.OriginNetwork,
+				event.Bridge.DestinationNetwork,
+				event.Bridge.DepositCount,
+				event.Bridge.BridgeTxHash.Hex(),
+				p.networkId,
+			)
+      
 			if p.enqueuer != nil {
 				claim := bridgeToClaim(event.Bridge)
 				if err := p.enqueuer.AddClaimToQueue(claim); err != nil {
@@ -847,6 +910,25 @@ func (p *processor) ProcessBlock(ctx context.Context, block sync.Block) error {
 		}
 
 		if event.Claim != nil {
+			// Populate bridge transaction hash for completed claims
+			if event.Claim.BridgeTxHash == (common.Hash{}) {
+				p.log.Infof(
+					"Looking up bridge tx hash for claim: global_index=%s, origin_network=%d",
+					event.Claim.GlobalIndex.String(),
+					event.Claim.OriginNetwork,
+				)
+				if bridgeTxHash, err := p.lookupBridgeTxHashForClaim(tx, event.Claim.GlobalIndex, event.Claim.OriginNetwork); err != nil {
+					p.log.Warnf(
+						"Failed to lookup bridge tx hash for claim global_index=%s: %v",
+						event.Claim.GlobalIndex.String(),
+						err,
+					)
+				} else {
+					p.log.Infof("Found bridge tx hash %s for claim global_index=%s", bridgeTxHash.Hex(), event.Claim.GlobalIndex.String())
+					event.Claim.BridgeTxHash = bridgeTxHash
+				}
+			}
+
 			if err = meddler.Insert(tx, claimTableName, event.Claim); err != nil {
 				p.log.Errorf("failed to insert claim event at block %d: %v", block.Num, err)
 				return err
@@ -1021,4 +1103,347 @@ func bridgeToClaim(b *Bridge) *claimsponsor.Claim {
 		Metadata:           b.Metadata,
 		Status:             claimsponsor.PendingClaimStatus,
 	}
+}
+
+// lookupBridgeTxHashForClaim looks up the bridge transaction hash for a given claim
+// by finding the bridge event that matches the claim's global index
+func (p *processor) lookupBridgeTxHashForClaim(
+	tx dbtypes.Txer,
+	globalIndex *big.Int,
+	originNetwork uint32,
+) (common.Hash, error) {
+	// First, try to find the bridge in the current database
+	bridgeTxHash, err := p.lookupBridgeInDatabase(tx, globalIndex, originNetwork, "current")
+	if err == nil {
+		return bridgeTxHash, nil
+	}
+	p.log.Infof("Bridge not found in current database: %v", err)
+
+	// If not found in current database, try to open and search other bridge databases
+	// This handles the case where L1 and L2 syncers use separate databases
+	return p.lookupBridgeInOtherDatabases(globalIndex, originNetwork)
+}
+
+// lookupBridgeInDatabase searches for a bridge in the specified database
+func (p *processor) lookupBridgeInDatabase(
+	tx dbtypes.Txer,
+	globalIndex *big.Int,
+	originNetwork uint32,
+	dbName string,
+) (common.Hash, error) {
+	// First, get total bridge count for debugging
+	var totalBridges int
+	err := tx.QueryRow("SELECT COUNT(*) FROM bridge").Scan(&totalBridges)
+	if err != nil {
+		p.log.Warnf("Failed to count bridges in %s database: %v", dbName, err)
+	} else {
+		p.log.Infof("Total bridges in %s database: %d", dbName, totalBridges)
+	}
+
+	// Query bridges that could match this claim
+	// We need to check bridges with the same origin network
+	query := `
+		SELECT bridge_tx_hash, deposit_count, origin_network, block_num, block_pos
+		FROM bridge 
+		WHERE origin_network = ? 
+		ORDER BY block_num DESC, block_pos DESC
+		LIMIT 1000`
+
+	rows, err := tx.Query(query, originNetwork)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to query bridges: %w", err)
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Errorf("failed to close rows: %v", err)
+		}
+	}()
+
+	bridgeCount := 0
+	for rows.Next() {
+		var bridgeTxHashBytes []byte
+		var depositCount uint32
+		var bridgeOriginNetwork uint32
+		var blockNum uint64
+		var blockPos uint64
+		bridgeCount++
+
+		if err := rows.Scan(&bridgeTxHashBytes, &depositCount, &bridgeOriginNetwork, &blockNum, &blockPos); err != nil {
+			return common.Hash{}, fmt.Errorf("failed to scan bridge row: %w", err)
+		}
+
+		// Calculate the global index this bridge would generate
+		mainnetFlag := bridgeOriginNetwork == 0
+		rollupIndex := bridgeOriginNetwork
+		if mainnetFlag {
+			rollupIndex = 0
+		}
+		calculatedGlobalIndex := aggkitcommon.GenerateGlobalIndex(mainnetFlag, rollupIndex, depositCount)
+
+		// Handle bridge transaction hash - check if it's hex-encoded or raw bytes
+		var bridgeTxHash common.Hash
+		switch len(bridgeTxHashBytes) {
+		case hashLengthRaw:
+			// Raw bytes - convert directly
+			bridgeTxHash = common.BytesToHash(bridgeTxHashBytes)
+		case hashLengthHex:
+			// Hex string without 0x prefix - decode it
+			bridgeTxHash = common.HexToHash("0x" + string(bridgeTxHashBytes))
+		case hashLengthHexPrefixed:
+			if string(bridgeTxHashBytes[:2]) == "0x" {
+				// Full hex string with 0x prefix
+				bridgeTxHash = common.HexToHash(string(bridgeTxHashBytes))
+			} else {
+				// Fallback - try direct conversion
+				bridgeTxHash = common.BytesToHash(bridgeTxHashBytes)
+				p.log.Warnf("Unexpected bridge_tx_hash format in %s: length=%d, data=%x", dbName, len(bridgeTxHashBytes), bridgeTxHashBytes)
+			}
+		default:
+			// Fallback - try direct conversion
+			bridgeTxHash = common.BytesToHash(bridgeTxHashBytes)
+			p.log.Warnf(
+				"Unexpected bridge_tx_hash format in %s: length=%d, data=%x",
+				dbName,
+				len(bridgeTxHashBytes),
+				bridgeTxHashBytes,
+			)
+		}
+
+		p.log.Infof(
+			"Checking bridge #%d in %s database: tx_hash=%s, origin_network=%d, deposit_count=%d, block_num=%d, block_pos=%d, calculated_global_index=%s, target_global_index=%s",
+			bridgeCount,
+			dbName,
+			bridgeTxHash.Hex(),
+			bridgeOriginNetwork,
+			depositCount,
+			blockNum,
+			blockPos,
+			calculatedGlobalIndex.String(),
+			globalIndex.String(),
+		)
+
+		// Check if this matches our claim's global index
+		if calculatedGlobalIndex.Cmp(globalIndex) == 0 {
+			p.log.Infof("Found matching bridge in %s database! tx_hash=%s", dbName, bridgeTxHash.Hex())
+			return bridgeTxHash, nil
+		}
+	}
+
+	p.log.Infof(
+		"Checked %d bridges in %s database for origin_network=%d, none matched global_index=%s",
+		bridgeCount,
+		dbName,
+		originNetwork,
+		globalIndex.String(),
+	)
+
+	if err := rows.Err(); err != nil {
+		return common.Hash{}, fmt.Errorf("error iterating bridge rows: %w", err)
+	}
+
+	// No matching bridge found - let's also check if there are any bridges with different origin networks
+	// to understand the data better
+	var allBridgesQuery = `SELECT COUNT(*), MIN(origin_network), MAX(origin_network) FROM bridge`
+	var totalCount, minOrigin, maxOrigin int
+	if err := tx.QueryRow(allBridgesQuery).Scan(&totalCount, &minOrigin, &maxOrigin); err == nil {
+		p.log.Infof(
+			"%s database stats: total_bridges=%d, origin_network_range=[%d,%d]",
+			dbName,
+			totalCount,
+			minOrigin,
+			maxOrigin,
+		)
+	}
+
+	// No matching bridge found in this database
+	return common.Hash{}, fmt.Errorf(
+		"no bridge found in %s database for global_index %s and origin_network %d",
+		dbName,
+		globalIndex.String(),
+		originNetwork,
+	)
+}
+
+// lookupBridgeInOtherDatabases attempts to find a bridge in other potential bridge databases
+// This handles the case where L1 and L2 syncers use separate databases
+func (p *processor) lookupBridgeInOtherDatabases(globalIndex *big.Int, originNetwork uint32) (common.Hash, error) {
+	// Try common bridge database paths based on the logs we saw
+	candidatePaths := []string{
+		"/app/data/bridgel1sync.sqlite",
+		"/app/data/bridgel2sync.sqlite",
+		"/app/data/bridge.sqlite",
+		"/app/data/bridgesync.sqlite",
+	}
+
+	for _, dbPath := range candidatePaths {
+		if bridgeTxHash, err := p.tryLookupInDatabase(dbPath, globalIndex, originNetwork); err == nil {
+			p.log.Infof("Found bridge in external database %s: tx_hash=%s", dbPath, bridgeTxHash.Hex())
+			return bridgeTxHash, nil
+		} else {
+			p.log.Debugf("Failed to find bridge in %s: %v", dbPath, err)
+		}
+	}
+
+	return common.Hash{}, fmt.Errorf(
+		"bridge not found in any accessible database for global_index %s and origin_network %d",
+		globalIndex.String(),
+		originNetwork,
+	)
+}
+
+// tryLookupInDatabase attempts to open and search a specific database file
+func (p *processor) tryLookupInDatabase(
+	dbPath string,
+	globalIndex *big.Int,
+	originNetwork uint32,
+) (common.Hash, error) {
+	// Open the database
+	otherDB, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to open database %s: %w", dbPath, err)
+	}
+	defer func() {
+		if err := otherDB.Close(); err != nil {
+			log.Errorf("failed to close database: %v", err)
+		}
+	}()
+
+	// Ping to ensure connection works
+	if err := otherDB.Ping(); err != nil {
+		return common.Hash{}, fmt.Errorf("failed to ping database %s: %w", dbPath, err)
+	}
+
+	// Check if the bridge table exists
+	var tableName string
+	err = otherDB.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='bridge'").Scan(&tableName)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("bridge table not found in %s: %w", dbPath, err)
+	}
+
+	// Search for the bridge using direct DB access
+	return p.searchBridgeInDB(otherDB, globalIndex, originNetwork, dbPath)
+}
+
+// searchBridgeInDB searches for a bridge directly in a database connection
+func (p *processor) searchBridgeInDB(
+	db *sql.DB,
+	globalIndex *big.Int,
+	originNetwork uint32,
+	dbPath string,
+) (common.Hash, error) {
+	// First, get total bridge count for debugging
+	var totalBridges int
+	err := db.QueryRow("SELECT COUNT(*) FROM bridge").Scan(&totalBridges)
+	if err != nil {
+		p.log.Warnf("Failed to count bridges in %s: %v", dbPath, err)
+	} else {
+		p.log.Infof("Total bridges in %s: %d", dbPath, totalBridges)
+	}
+
+	// Query bridges that could match this claim
+	query := `
+		SELECT bridge_tx_hash, deposit_count, origin_network, block_num, block_pos
+		FROM bridge 
+		WHERE origin_network = ? 
+		ORDER BY block_num DESC, block_pos DESC
+		LIMIT 1000`
+
+	rows, err := db.Query(query, originNetwork)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to query bridges in %s: %w", dbPath, err)
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Errorf("failed to close rows: %v", err)
+		}
+	}()
+
+	bridgeCount := 0
+	for rows.Next() {
+		var bridgeTxHashBytes []byte
+		var depositCount uint32
+		var bridgeOriginNetwork uint32
+		var blockNum uint64
+		var blockPos uint64
+		bridgeCount++
+
+		if err := rows.Scan(&bridgeTxHashBytes, &depositCount, &bridgeOriginNetwork, &blockNum, &blockPos); err != nil {
+			return common.Hash{}, fmt.Errorf("failed to scan bridge row in %s: %w", dbPath, err)
+		}
+
+		// Calculate the global index this bridge would generate
+		mainnetFlag := bridgeOriginNetwork == 0
+		rollupIndex := bridgeOriginNetwork
+		if mainnetFlag {
+			rollupIndex = 0
+		}
+		calculatedGlobalIndex := aggkitcommon.GenerateGlobalIndex(mainnetFlag, rollupIndex, depositCount)
+
+		// Handle bridge transaction hash - check if it's hex-encoded or raw bytes
+		var bridgeTxHash common.Hash
+		switch len(bridgeTxHashBytes) {
+		case hashLengthRaw:
+			// Raw bytes - convert directly
+			bridgeTxHash = common.BytesToHash(bridgeTxHashBytes)
+		case hashLengthHex:
+			// Hex string without 0x prefix - decode it
+			bridgeTxHash = common.HexToHash("0x" + string(bridgeTxHashBytes))
+		case hashLengthHexPrefixed:
+			if string(bridgeTxHashBytes[:2]) == "0x" {
+				// Full hex string with 0x prefix
+				bridgeTxHash = common.HexToHash(string(bridgeTxHashBytes))
+			} else {
+				// Fallback - try direct conversion
+				bridgeTxHash = common.BytesToHash(bridgeTxHashBytes)
+				p.log.Warnf("Unexpected bridge_tx_hash format in %s: length=%d, data=%x", dbPath, len(bridgeTxHashBytes), bridgeTxHashBytes)
+			}
+		default:
+			// Fallback - try direct conversion
+			bridgeTxHash = common.BytesToHash(bridgeTxHashBytes)
+			p.log.Warnf(
+				"Unexpected bridge_tx_hash format in %s: length=%d, data=%x",
+				dbPath,
+				len(bridgeTxHashBytes),
+				bridgeTxHashBytes,
+			)
+		}
+		p.log.Infof(
+			"Checking bridge #%d in %s: tx_hash=%s, origin_network=%d, deposit_count=%d, block_num=%d, block_pos=%d, calculated_global_index=%s, target_global_index=%s",
+			bridgeCount,
+			dbPath,
+			bridgeTxHash.Hex(),
+			bridgeOriginNetwork,
+			depositCount,
+			blockNum,
+			blockPos,
+			calculatedGlobalIndex.String(),
+			globalIndex.String(),
+		)
+
+		// Check if this matches our claim's global index
+		if calculatedGlobalIndex.Cmp(globalIndex) == 0 {
+			p.log.Infof("Found matching bridge in %s! tx_hash=%s", dbPath, bridgeTxHash.Hex())
+			return bridgeTxHash, nil
+		}
+	}
+
+	p.log.Infof(
+		"Checked %d bridges in %s for origin_network=%d, none matched global_index=%s",
+		bridgeCount,
+		dbPath,
+		originNetwork,
+		globalIndex.String(),
+	)
+
+	if err := rows.Err(); err != nil {
+		return common.Hash{}, fmt.Errorf("error iterating bridge rows in %s: %w", dbPath, err)
+	}
+
+	// No matching bridge found in this database
+	return common.Hash{}, fmt.Errorf(
+		"no bridge found in %s for global_index %s and origin_network %d",
+		dbPath,
+		globalIndex.String(),
+		originNetwork,
+	)
 }

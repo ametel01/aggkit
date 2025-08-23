@@ -79,6 +79,9 @@ build-docker: ## Builds a docker image with the aggkit binary
 build-docker-nc: ## Builds a docker image with the aggkit binary - but without build cache
 	docker build --no-cache=true -t aggkit -f ./Dockerfile .
 
+.PHONY: test
+test: test-unit ## Runs all tests
+
 .PHONY: test-unit
 test-unit: ## Runs the unit tests
 	trap '$(STOP)' EXIT; MallocNanoZone=0 go test -count=1 -short -race -p 1 -covermode=atomic -coverprofile=coverage.out  -coverpkg ./... -timeout 15m ./...
@@ -86,6 +89,31 @@ test-unit: ## Runs the unit tests
 .PHONY: lint
 lint: ## Runs the linter
 	export "GOROOT=$$(go env GOROOT)" && $$(go env GOPATH)/bin/golangci-lint run --timeout 5m
+
+.PHONY: fmt
+fmt: ## Formats all Go code and automatically fixes line lengths
+	@echo "Formatting Go code with gofmt..."
+	gofmt -s -w .
+	@echo "Fixing long lines with golines..."
+	$$(go env GOPATH)/bin/golines -w -m 120 .
+	@echo "✅ Code formatted and line lengths fixed"
+
+.PHONY: fmt-check
+fmt-check: ## Check formatting and line lengths without making changes
+	@echo "Checking Go code formatting..."
+	@if [ -n "$$(gofmt -s -l .)" ]; then \
+		echo "❌ Code is not formatted. Run 'make fmt' to fix."; \
+		gofmt -s -l .; \
+		exit 1; \
+	fi
+	@echo "Checking for long lines (>120 characters)..."
+	@if $$(go env GOPATH)/bin/golines -m 120 . | grep -q .; then \
+		echo "❌ Found lines longer than 120 characters:"; \
+		$$(go env GOPATH)/bin/golines -m 120 .; \
+		echo "Run 'make fmt' to fix automatically."; \
+		exit 1; \
+	fi
+	@echo "✅ All code is properly formatted and within line limits"
 
 .PHONY: generate-swagger-docs
 generate-swagger-docs: ## Generates the swagger docs

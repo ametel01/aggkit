@@ -66,10 +66,12 @@ const (
 	NETWORK_ID_MAINNET    = 0
 	NETWORK_ID_AGGLAYER_1 = 1
 	NETWORK_ID_AGGLAYER_2 = 2
+	NETWORK_ID_BASE       = 3
 
 	CHAIN_ID_MAINNET    = 1
 	CHAIN_ID_AGGLAYER_1 = 1101
 	CHAIN_ID_AGGLAYER_2 = 137
+	CHAIN_ID_BASE       = 8453
 )
 
 // chainIDToNetworkID converts chain ID back to network ID for API responses
@@ -82,8 +84,8 @@ func ChainIDToNetworkID(chainID uint32) uint32 {
 		return NETWORK_ID_AGGLAYER_1 // Polygon zkEVM L2
 	case CHAIN_ID_AGGLAYER_2:
 		return NETWORK_ID_AGGLAYER_2 // Polygon
-	case 8453:
-		return 3 // Base
+	case CHAIN_ID_BASE:
+		return NETWORK_ID_BASE // Base
 	default:
 		// For unknown chain IDs or if it's already a network ID, return as-is
 		// This handles cases where the database already contains network IDs

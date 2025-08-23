@@ -38,7 +38,12 @@ type MockBridgeDataProvider struct {
 
 func (m *MockBridgeDataProvider) GetLastProcessedBlock(ctx context.Context) (uint64, error) {
 	args := m.Called(ctx)
-	return args.Get(0).(uint64), args.Error(1)
+	if val := args.Get(0); val != nil {
+		if v, ok := val.(uint64); ok {
+			return v, args.Error(1)
+		}
+	}
+	return 0, args.Error(1)
 }
 
 func (m *MockBridgeDataProvider) GetBridges(
@@ -46,7 +51,12 @@ func (m *MockBridgeDataProvider) GetBridges(
 	fromBlock, toBlock uint64,
 ) ([]bridgesync.Bridge, error) {
 	args := m.Called(ctx, fromBlock, toBlock)
-	return args.Get(0).([]bridgesync.Bridge), args.Error(1)
+	if val := args.Get(0); val != nil {
+		if v, ok := val.([]bridgesync.Bridge); ok {
+			return v, args.Error(1)
+		}
+	}
+	return nil, args.Error(1)
 }
 
 // MockL1InfoTreer is a mock implementation of the L1InfoTreer interface
@@ -62,7 +72,10 @@ func (m *MockL1InfoTreer) GetLatestInfoUntilBlock(
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*l1infotreesync.L1InfoTreeLeaf), args.Error(1)
+	if val, ok := args.Get(0).(*l1infotreesync.L1InfoTreeLeaf); ok {
+		return val, args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockL1InfoTreer) GetLastInfo() (*l1infotreesync.L1InfoTreeLeaf, error) {
@@ -70,7 +83,10 @@ func (m *MockL1InfoTreer) GetLastInfo() (*l1infotreesync.L1InfoTreeLeaf, error) 
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*l1infotreesync.L1InfoTreeLeaf), args.Error(1)
+	if val, ok := args.Get(0).(*l1infotreesync.L1InfoTreeLeaf); ok {
+		return val, args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func TestNewSandboxAggOracle(t *testing.T) {

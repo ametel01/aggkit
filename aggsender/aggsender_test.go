@@ -184,7 +184,11 @@ func TestExploratoryGenerateCert(t *testing.T) {
 	file, err := os.Create("test.json")
 	require.NoError(t, err)
 
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("failed to close file: %v", err)
+		}
+	}()
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")

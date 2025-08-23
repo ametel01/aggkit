@@ -16,13 +16,12 @@ type Result struct {
 // GetClaimProof reproduces the logic that existed in BridgeService.
 func GetRoots(
 	ctx context.Context,
-	L1InfoTree *l1infotreesync.L1InfoTreeSync,
+	l1InfoTree *l1infotreesync.L1InfoTreeSync,
 	l1InfoIndex uint32,
 ) (*Result, error) {
-
-	leaf, err := L1InfoTree.GetInfoByIndex(ctx, l1InfoIndex)
+	leaf, err := l1InfoTree.GetInfoByIndex(ctx, l1InfoIndex)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get L1 info tree leaf for index %d: %v", l1InfoIndex, err)
+		return nil, fmt.Errorf("failed to get L1 info tree leaf for index %d: %w", l1InfoIndex, err)
 	}
 
 	return &Result{

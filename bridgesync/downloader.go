@@ -3,14 +3,15 @@ package bridgesync
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/0xPolygon/cdk-contracts-tooling/contracts/fep/etrog/polygonzkevmbridge"
 	"github.com/0xPolygon/cdk-contracts-tooling/contracts/pp/l2-sovereign-chain/bridgel2sovereignchain"
 	"github.com/0xPolygon/cdk-contracts-tooling/contracts/pp/l2-sovereign-chain/polygonzkevmbridgev2"
 	rpctypes "github.com/0xPolygon/cdk-rpc/types"
 	bridgetypes "github.com/agglayer/aggkit/bridgeservice/types"
+	aggkitcommon "github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/db"
 	logger "github.com/agglayer/aggkit/log"
 	"github.com/agglayer/aggkit/sync"
@@ -41,8 +42,8 @@ var (
 		"RemoveLegacySovereignTokenAddress(address)",
 	))
 
-	claimAssetEtrogMethodID      = common.Hex2Bytes("ccaa2d11")
-	claimMessageEtrogMethodID    = common.Hex2Bytes("f5efcd79")
+	claimAssetEtrogMethodID      = common.Hex2Bytes("1b260e3b")
+	claimMessageEtrogMethodID    = common.Hex2Bytes("af837c76")
 	claimAssetPreEtrogMethodID   = common.Hex2Bytes("2cffd02e")
 	claimMessagePreEtrogMethodID = common.Hex2Bytes("2d2c9d94")
 	zeroAddress                  = common.HexToAddress("0x0")
@@ -57,18 +58,28 @@ const (
 
 	// methodIDLength is the length of the method ID in bytes
 	methodIDLength = 4
+
+	// Chain ID constants
+	chainIDEthereum = 1    // L1 Ethereum
+	chainIDL2       = 1101 // L2 chain ID
+	chainIDL3       = 137  // L3 chain ID
+
+	// Network ID constants for multi-L2 setup
+	networkIDMainnet = 0
+	networkIDL2      = 1
+	networkIDL3      = 2
 )
 
 // getDestinationNetwork maps chain ID to network ID for destination network
 func getDestinationNetwork(chainID uint64) uint32 {
 	// Map chain IDs to network IDs for multi-L2 setup
 	switch chainID {
-	case 1: // L1 Ethereum
-		return 0
-	case 1101: // L2 chain ID
-		return 1
-	case 137: // L3 chain ID
-		return 2
+	case chainIDEthereum:
+		return networkIDMainnet
+	case chainIDL2:
+		return networkIDL2
+	case chainIDL3:
+		return networkIDL3
 	default:
 		// Fallback: use chain ID as network ID for unknown chains
 		return uint32(chainID)
@@ -143,7 +154,7 @@ func buildBridgeEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2
 			BlockNum:           b.Num,
 			BlockPos:           uint64(l.Index),
 			FromAddress:        foundCall.From,
-			TxHash:             l.TxHash,
+			BridgeTxHash:       l.TxHash,
 			Calldata:           foundCall.Input,
 			BlockTimestamp:     b.Timestamp,
 			LeafType:           bridgeEvent.LeafType,
@@ -163,7 +174,7 @@ func buildBridgeEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2
 // buildClaimEventHandler creates a handler for the Claim event log.
 func buildClaimEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2,
 	client aggkittypes.EthClienter, bridgeAddr common.Address, syncFullClaims bool, logger *logger.Logger,
-	syncerType BridgeSyncerType,
+	_ BridgeSyncerType,
 ) func(*sync.EVMBlock, types.Log) error {
 	return func(b *sync.EVMBlock, l types.Log) error {
 		claimEvent, err := contract.ParseClaimEvent(l)
@@ -182,17 +193,31 @@ func buildClaimEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2,
 			destinationNetwork = getDestinationNetwork(chainID.Uint64())
 		}
 
+		// Calculate the proper global index for post-Etrog claims
+		// The claimEvent.GlobalIndex is actually the deposit count, not the global index
+		mainnetFlag := claimEvent.OriginNetwork == 0
+		rollupIndex := claimEvent.OriginNetwork
+		if mainnetFlag {
+			rollupIndex = 0
+		}
+		globalIndex := aggkitcommon.GenerateGlobalIndex(
+			mainnetFlag,
+			rollupIndex,
+			uint32(claimEvent.GlobalIndex.Uint64()),
+		)
+
 		claim := &Claim{
 			BlockNum:           b.Num,
 			BlockPos:           uint64(l.Index),
-			GlobalIndex:        claimEvent.GlobalIndex,
+			GlobalIndex:        globalIndex,
 			OriginNetwork:      claimEvent.OriginNetwork,
 			OriginAddress:      claimEvent.OriginAddress,
 			DestinationAddress: claimEvent.DestinationAddress,
 			DestinationNetwork: destinationNetwork,
 			Amount:             claimEvent.Amount,
 			BlockTimestamp:     b.Timestamp,
-			TxHash:             l.TxHash,
+			BridgeTxHash:       common.Hash{}, // Will be populated by processor
+			ClaimTxHash:        l.TxHash,
 			FromAddress:        l.Address,
 		}
 
@@ -210,7 +235,7 @@ func buildClaimEventHandler(contract *polygonzkevmbridgev2.Polygonzkevmbridgev2,
 // buildClaimEventHandlerPreEtrog creates a handler for the Claim event log for pre-Etrog contracts.
 func buildClaimEventHandlerPreEtrog(contract *polygonzkevmbridge.Polygonzkevmbridge,
 	client aggkittypes.EthClienter, bridgeAddr common.Address, syncFullClaims bool, logger *logger.Logger,
-	syncerType BridgeSyncerType,
+	_ BridgeSyncerType,
 ) func(*sync.EVMBlock, types.Log) error {
 	return func(b *sync.EVMBlock, l types.Log) error {
 		claimEvent, err := contract.ParseClaimEvent(l)
@@ -229,15 +254,28 @@ func buildClaimEventHandlerPreEtrog(contract *polygonzkevmbridge.Polygonzkevmbri
 			destinationNetwork = getDestinationNetwork(chainID.Uint64())
 		}
 
+		// Calculate the proper global index for pre-Etrog claims
+		// The claimEvent.Index is actually the deposit count, not the global index
+		mainnetFlag := claimEvent.OriginNetwork == 0
+		rollupIndex := claimEvent.OriginNetwork
+		if mainnetFlag {
+			rollupIndex = 0
+		}
+		globalIndex := aggkitcommon.GenerateGlobalIndex(mainnetFlag, rollupIndex, claimEvent.Index)
+
 		claim := &Claim{
 			BlockNum:           b.Num,
 			BlockPos:           uint64(l.Index),
-			GlobalIndex:        big.NewInt(int64(claimEvent.Index)),
+			GlobalIndex:        globalIndex,
 			OriginNetwork:      claimEvent.OriginNetwork,
 			OriginAddress:      claimEvent.OriginAddress,
 			DestinationAddress: claimEvent.DestinationAddress,
 			DestinationNetwork: destinationNetwork,
 			Amount:             claimEvent.Amount,
+			BridgeTxHash:       common.Hash{}, // Will be populated by processor
+			ClaimTxHash:        l.TxHash,
+			BlockTimestamp:     b.Timestamp,
+			FromAddress:        l.Address,
 		}
 
 		if syncFullClaims {
@@ -484,7 +522,7 @@ func (c *Claim) setClaimCalldata(
 		}, logger)
 
 	// If no valid claim calldata is found, this is normal - don't treat it as an error
-	if err == db.ErrNotFound {
+	if errors.Is(err, db.ErrNotFound) {
 		return nil
 	}
 
@@ -511,7 +549,17 @@ func (c *Claim) tryDecodeClaimCalldata(senderAddr common.Address, input []byte) 
 		// Recover Method from signature and ABI
 		method, err := bridgeV2ABI.MethodById(methodID)
 		if err != nil {
-			return false, err
+			// Handle case where method ID doesn't exist in ABI
+			// This can happen when contract method signatures don't match Go bindings
+			// We'll try to decode manually using the known signature parameters
+			found, err := c.decodeEtrogCalldataManual(senderAddr, input[methodIDLength:])
+			if err != nil {
+				return false, fmt.Errorf("failed to manually decode calldata for method 0x%x: %w", methodID, err)
+			}
+			if found {
+				c.IsMessage = bytes.Equal(methodID, claimMessageEtrogMethodID)
+			}
+			return found, nil
 		}
 
 		data, err := method.Inputs.Unpack(input[methodIDLength:])

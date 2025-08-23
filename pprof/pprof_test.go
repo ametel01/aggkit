@@ -35,7 +35,9 @@ func TestStartProfilingHttpServer(t *testing.T) {
 	address := net.JoinHostPort(config.ProfilingHost, fmt.Sprintf("%d", config.ProfilingPort))
 	conn, err := net.Dial("tcp", address)
 	require.NoError(t, err, "failed to connect to profiling server")
-	conn.Close()
+	if err := conn.Close(); err != nil {
+		t.Errorf("failed to close connection: %v", err)
+	}
 
 	// Test if the endpoints are accessible
 	endpoints := []string{
@@ -58,6 +60,10 @@ func TestStartProfilingHttpServer(t *testing.T) {
 			resp.StatusCode,
 			http.StatusOK,
 		)
-		resp.Body.Close()
+
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("failed to close response body: %v", err)
+		}
+
 	}
 }
