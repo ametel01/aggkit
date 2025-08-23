@@ -49,7 +49,15 @@ func TestStartProfilingHttpServer(t *testing.T) {
 	for _, endpoint := range endpoints {
 		resp, err := http.Get("http://" + address + endpoint)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code for endpoint %s: got %d, want %d", endpoint, resp.StatusCode, http.StatusOK)
+		require.Equal(
+			t,
+			http.StatusOK,
+			resp.StatusCode,
+			"unexpected status code for endpoint %s: got %d, want %d",
+			endpoint,
+			resp.StatusCode,
+			http.StatusOK,
+		)
 		resp.Body.Close()
 	}
 }

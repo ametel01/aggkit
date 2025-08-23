@@ -22,7 +22,7 @@ type Config struct {
 	// URLRPCL2 is the URL of the L2 RPC node
 	URLRPCL2 string `mapstructure:"URLRPCL2"`
 	// BlockFinality indicates which finality the AggLayer follows
-	BlockFinality string `jsonschema:"enum=LatestBlock, enum=SafeBlock, enum=PendingBlock, enum=FinalizedBlock, enum=EarliestBlock" mapstructure:"BlockFinality"` //nolint:lll
+	BlockFinality string `mapstructure:"BlockFinality"                        jsonschema:"enum=LatestBlock, enum=SafeBlock, enum=PendingBlock, enum=FinalizedBlock, enum=EarliestBlock"` //nolint:lll
 	// EpochNotificationPercentage indicates the percentage of the epoch
 	// the AggSender should send the certificate
 	// 0 -> Begin
@@ -47,7 +47,7 @@ type Config struct {
 	// AggkitProverClient is the config for the AggkitProver client
 	AggkitProverClient *aggkitgrpc.ClientConfig `mapstructure:"AggkitProverClient"`
 	// Mode is the mode of the AggSender (regular pessimistic proof mode or the aggchain proof mode)
-	Mode string `jsonschema:"enum=PessimisticProof, enum=AggchainProof" mapstructure:"Mode"`
+	Mode string `mapstructure:"Mode"                                 jsonschema:"enum=PessimisticProof, enum=AggchainProof"`
 	// CheckStatusCertificateInterval is the interval at which the AggSender will check the certificate status in Agglayer
 	CheckStatusCertificateInterval types.Duration `mapstructure:"CheckStatusCertificateInterval"`
 	// RetryCertAfterInError when a cert pass to 'InError'

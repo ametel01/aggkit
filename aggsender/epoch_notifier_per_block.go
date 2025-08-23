@@ -48,7 +48,10 @@ func NewConfigEpochNotifierPerBlock(ctx context.Context,
 	}
 	clockConfig, err := agglayerClient.GetEpochConfiguration(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("newConfigEpochNotifierPerBlock: error getting clock configuration from AggLayer: %w", err)
+		return nil, fmt.Errorf(
+			"newConfigEpochNotifierPerBlock: error getting clock configuration from AggLayer: %w",
+			err,
+		)
 	}
 	return &ConfigEpochNotifierPerBlock{
 		StartingEpochBlock:          clockConfig.GenesisBlock,

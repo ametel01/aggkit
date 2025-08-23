@@ -63,11 +63,11 @@ const (
 func getDestinationNetwork(chainID uint64) uint32 {
 	// Map chain IDs to network IDs for multi-L2 setup
 	switch chainID {
-	case 1:    // L1 Ethereum
+	case 1: // L1 Ethereum
 		return 0
-	case 1101: // L2 chain ID 
+	case 1101: // L2 chain ID
 		return 1
-	case 137:  // L3 chain ID  
+	case 137: // L3 chain ID
 		return 2
 	default:
 		// Fallback: use chain ID as network ID for unknown chains
@@ -298,7 +298,11 @@ func buildSetSovereignTokenHandler(contract *bridgel2sovereignchain.Bridgel2sove
 
 		foundCall, err := extractCall(client, bridgeAddr, l.TxHash, logger)
 		if err != nil {
-			return fmt.Errorf("failed to extract the SetSovereignTokenAddress event calldata (tx hash: %s): %w", l.TxHash, err)
+			return fmt.Errorf(
+				"failed to extract the SetSovereignTokenAddress event calldata (tx hash: %s): %w",
+				l.TxHash,
+				err,
+			)
 		}
 
 		b.Events = append(b.Events, Event{TokenMapping: &TokenMapping{
@@ -329,7 +333,11 @@ func buildMigrateLegacyTokenHandler(contract *bridgel2sovereignchain.Bridgel2sov
 
 		foundCall, err := extractCall(client, bridgeAddr, l.TxHash, logger)
 		if err != nil {
-			return fmt.Errorf("failed to extract the MigrateLegacyToken event calldata (tx hash: %s): %w", l.TxHash, err)
+			return fmt.Errorf(
+				"failed to extract the MigrateLegacyToken event calldata (tx hash: %s): %w",
+				l.TxHash,
+				err,
+			)
 		}
 
 		b.Events = append(b.Events, Event{LegacyTokenMigration: &LegacyTokenMigration{

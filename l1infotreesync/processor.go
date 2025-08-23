@@ -94,15 +94,15 @@ type Event struct {
 
 // L1InfoTreeLeaf representation of a leaf of the L1 Info tree
 type L1InfoTreeLeaf struct {
-	BlockNumber       uint64      `meddler:"block_num" json:"block_num"`
-	BlockPosition     uint64      `meddler:"block_pos" json:"block_pos"`
-	L1InfoTreeIndex   uint32      `meddler:"position" json:"l1_info_tree_index"`
+	BlockNumber       uint64      `meddler:"block_num"                json:"block_num"`
+	BlockPosition     uint64      `meddler:"block_pos"                json:"block_pos"`
+	L1InfoTreeIndex   uint32      `meddler:"position"                 json:"l1_info_tree_index"`
 	PreviousBlockHash common.Hash `meddler:"previous_block_hash,hash" json:"previous_block_hash"`
-	Timestamp         uint64      `meddler:"timestamp" json:"timestamp"`
-	MainnetExitRoot   common.Hash `meddler:"mainnet_exit_root,hash" json:"mainnet_exit_root"`
-	RollupExitRoot    common.Hash `meddler:"rollup_exit_root,hash" json:"rollup_exit_root"`
-	GlobalExitRoot    common.Hash `meddler:"global_exit_root,hash" json:"global_exit_root"`
-	Hash              common.Hash `meddler:"hash,hash" json:"hash"`
+	Timestamp         uint64      `meddler:"timestamp"                json:"timestamp"`
+	MainnetExitRoot   common.Hash `meddler:"mainnet_exit_root,hash"   json:"mainnet_exit_root"`
+	RollupExitRoot    common.Hash `meddler:"rollup_exit_root,hash"    json:"rollup_exit_root"`
+	GlobalExitRoot    common.Hash `meddler:"global_exit_root,hash"    json:"global_exit_root"`
+	Hash              common.Hash `meddler:"hash,hash"                json:"hash"`
 }
 
 func (l *L1InfoTreeLeaf) String() string {
@@ -120,7 +120,12 @@ type L1InfoTreeInitial struct {
 }
 
 func (l *L1InfoTreeInitial) String() string {
-	return fmt.Sprintf("BlockNumber: %d, LeafCount: %d, L1InfoRoot: %s", l.BlockNumber, l.LeafCount, l.L1InfoRoot.String())
+	return fmt.Sprintf(
+		"BlockNumber: %d, LeafCount: %d, L1InfoRoot: %s",
+		l.BlockNumber,
+		l.LeafCount,
+		l.L1InfoRoot.String(),
+	)
 }
 
 // Hash as expected by the tree
@@ -380,7 +385,11 @@ func (p *processor) ProcessBlock(ctx context.Context, block sync.Block) error {
 				return fmt.Errorf("check duplicate GER: %w", err)
 			}
 			if exists > 0 {
-				p.log.Debugf("duplicate GER %s detected on block %d – skipping L1InfoTree leaf insertion", info.GlobalExitRoot, block.Num)
+				p.log.Debugf(
+					"duplicate GER %s detected on block %d – skipping L1InfoTree leaf insertion",
+					info.GlobalExitRoot,
+					block.Num,
+				)
 				continue // do not add leaf, do not update index counter
 			}
 
@@ -399,8 +408,13 @@ func (p *processor) ProcessBlock(ctx context.Context, block sync.Block) error {
 			l1InfoLeavesAdded++
 		}
 		if event.UpdateL1InfoTreeV2 != nil {
-			p.log.Infof("handle UpdateL1InfoTreeV2 event. Block: %d, block hash: %s. Event root: %s. Event leaf count: %d.",
-				block.Num, block.Hash, event.UpdateL1InfoTreeV2.CurrentL1InfoRoot.String(), event.UpdateL1InfoTreeV2.LeafCount)
+			p.log.Infof(
+				"handle UpdateL1InfoTreeV2 event. Block: %d, block hash: %s. Event root: %s. Event leaf count: %d.",
+				block.Num,
+				block.Hash,
+				event.UpdateL1InfoTreeV2.CurrentL1InfoRoot.String(),
+				event.UpdateL1InfoTreeV2.LeafCount,
+			)
 
 			root, err := p.l1InfoTree.GetLastRoot(tx)
 			if err != nil {
@@ -410,7 +424,8 @@ func (p *processor) ProcessBlock(ctx context.Context, block sync.Block) error {
 			// failed due to a reorg. Hopefully, this is the case, eventually the reorg will get detected,
 			// and the syncer will get unhalted. Otherwise, this means that the syncer has an inconsistent state
 			// compared to the contracts, and this will need manual intervention.
-			if root.Hash != event.UpdateL1InfoTreeV2.CurrentL1InfoRoot || root.Index+1 != event.UpdateL1InfoTreeV2.LeafCount {
+			if root.Hash != event.UpdateL1InfoTreeV2.CurrentL1InfoRoot ||
+				root.Index+1 != event.UpdateL1InfoTreeV2.LeafCount {
 				errStr := fmt.Sprintf(
 					"failed to check UpdateL1InfoTreeV2. Root: %s vs event: %s. "+
 						"Index: %d vs event.LeafCount: %d. Happened on block %d",

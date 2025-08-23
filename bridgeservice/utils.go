@@ -166,9 +166,11 @@ func NewPendingClaimResponse(bridge *bridgesync.Bridge) *bridgetypes.ClaimRespon
 		OriginAddress:      bridgetypes.Address(bridge.OriginAddress.Hex()),
 		OriginNetwork:      bridge.OriginNetwork,
 		BlockTimestamp:     bridge.BlockTimestamp,
-		MainnetExitRoot:    bridgetypes.Hash("0x0000000000000000000000000000000000000000000000000000000000000000"), // Empty for pending
-		Status:             "pending",
-		Type:               claimType,
+		MainnetExitRoot: bridgetypes.Hash(
+			"0x0000000000000000000000000000000000000000000000000000000000000000",
+		), // Empty for pending
+		Status: "pending",
+		Type:   claimType,
 	}
 }
 

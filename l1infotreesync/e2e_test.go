@@ -46,11 +46,20 @@ func newSimulatedClient(t *testing.T) (
 	require.NoError(t, err)
 
 	precalculatedGERAddr := crypto.CreateAddress(setup.UserAuth.From, nonce+1)
-	verifyAddr, _, verifyContract, err := verifybatchesmock.DeployVerifybatchesmock(setup.UserAuth, client.Client(), precalculatedGERAddr)
+	verifyAddr, _, verifyContract, err := verifybatchesmock.DeployVerifybatchesmock(
+		setup.UserAuth,
+		client.Client(),
+		precalculatedGERAddr,
+	)
 	require.NoError(t, err)
 	client.Commit()
 
-	gerAddr, _, gerContract, err := polygonzkevmglobalexitrootv2.DeployPolygonzkevmglobalexitrootv2(setup.UserAuth, client.Client(), verifyAddr, setup.UserAuth.From)
+	gerAddr, _, gerContract, err := polygonzkevmglobalexitrootv2.DeployPolygonzkevmglobalexitrootv2(
+		setup.UserAuth,
+		client.Client(),
+		verifyAddr,
+		setup.UserAuth.From,
+	)
 	require.NoError(t, err)
 	require.Equal(t, precalculatedGERAddr, gerAddr)
 	client.Commit()
@@ -70,8 +79,23 @@ func TestE2E(t *testing.T) {
 	rdm.On("AddBlockToTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	client, auth, gerAddr, verifyAddr, gerSc, verifySC := newSimulatedClient(t)
-	syncer, err := l1infotreesync.New(ctx, dbPath, gerAddr, verifyAddr, 10, aggkittypes.LatestBlock, rdm, client.Client(), time.Millisecond, 0, 100*time.Millisecond, 25,
-		l1infotreesync.FlagAllowWrongContractsAddrs, aggkittypes.SafeBlock, true)
+	syncer, err := l1infotreesync.New(
+		ctx,
+		dbPath,
+		gerAddr,
+		verifyAddr,
+		10,
+		aggkittypes.LatestBlock,
+		rdm,
+		client.Client(),
+		time.Millisecond,
+		0,
+		100*time.Millisecond,
+		25,
+		l1infotreesync.FlagAllowWrongContractsAddrs,
+		aggkittypes.SafeBlock,
+		true,
+	)
 	require.NoError(t, err)
 
 	go syncer.Start(ctx)
@@ -129,7 +153,12 @@ func TestE2E(t *testing.T) {
 			require.NoError(t, err)
 			actualRollupExitRoot, err := syncer.GetLastRollupExitRoot(ctx)
 			require.NoError(t, err)
-			require.Equal(t, common.Hash(expectedRollupExitRoot), actualRollupExitRoot.Hash, fmt.Sprintf("rollupID: %d, i: %d", rollupID, i))
+			require.Equal(
+				t,
+				common.Hash(expectedRollupExitRoot),
+				actualRollupExitRoot.Hash,
+				fmt.Sprintf("rollupID: %d, i: %d", rollupID, i),
+			)
 
 			// Assert verify batches
 			expectedVerify := l1infotreesync.VerifyBatches{
@@ -154,12 +183,31 @@ func TestWithReorgs(t *testing.T) {
 
 	client, auth, gerAddr, verifyAddr, gerSc, verifySC := newSimulatedClient(t)
 
-	rd, err := reorgdetector.New(client.Client(), reorgdetector.Config{DBPath: dbPathReorg, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 30)}, reorgdetector.L1)
+	rd, err := reorgdetector.New(
+		client.Client(),
+		reorgdetector.Config{DBPath: dbPathReorg, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 30)},
+		reorgdetector.L1,
+	)
 	require.NoError(t, err)
 	require.NoError(t, rd.Start(ctx))
 
-	syncer, err := l1infotreesync.New(ctx, dbPathSyncer, gerAddr, verifyAddr, 10, aggkittypes.LatestBlock, rd, client.Client(), time.Millisecond, 0, time.Second, 25,
-		l1infotreesync.FlagAllowWrongContractsAddrs, aggkittypes.SafeBlock, true)
+	syncer, err := l1infotreesync.New(
+		ctx,
+		dbPathSyncer,
+		gerAddr,
+		verifyAddr,
+		10,
+		aggkittypes.LatestBlock,
+		rd,
+		client.Client(),
+		time.Millisecond,
+		0,
+		time.Second,
+		25,
+		l1infotreesync.FlagAllowWrongContractsAddrs,
+		aggkittypes.SafeBlock,
+		true,
+	)
 	require.NoError(t, err)
 	go syncer.Start(ctx)
 
@@ -274,12 +322,31 @@ func TestStressAndReorgs(t *testing.T) {
 
 	client, auth, gerAddr, verifyAddr, gerSc, verifySC := newSimulatedClient(t)
 
-	rd, err := reorgdetector.New(client.Client(), reorgdetector.Config{DBPath: dbPathReorg, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 100)}, reorgdetector.L1)
+	rd, err := reorgdetector.New(
+		client.Client(),
+		reorgdetector.Config{DBPath: dbPathReorg, CheckReorgsInterval: cfgtypes.NewDuration(time.Millisecond * 100)},
+		reorgdetector.L1,
+	)
 	require.NoError(t, err)
 	require.NoError(t, rd.Start(ctx))
 
-	syncer, err := l1infotreesync.New(ctx, dbPathSyncer, gerAddr, verifyAddr, 10, aggkittypes.LatestBlock, rd, client.Client(), time.Millisecond, 0, time.Second, 100,
-		l1infotreesync.FlagAllowWrongContractsAddrs, aggkittypes.SafeBlock, true)
+	syncer, err := l1infotreesync.New(
+		ctx,
+		dbPathSyncer,
+		gerAddr,
+		verifyAddr,
+		10,
+		aggkittypes.LatestBlock,
+		rd,
+		client.Client(),
+		time.Millisecond,
+		0,
+		time.Second,
+		100,
+		l1infotreesync.FlagAllowWrongContractsAddrs,
+		aggkittypes.SafeBlock,
+		true,
+	)
 	require.NoError(t, err)
 	go syncer.Start(ctx)
 
@@ -336,7 +403,12 @@ func TestStressAndReorgs(t *testing.T) {
 	require.Equal(t, common.Hash(expectedL1InfoRoot), lastRoot.Hash)
 }
 
-func waitForSyncerToCatchUp(ctx context.Context, t *testing.T, syncer *l1infotreesync.L1InfoTreeSync, client *simulated.Backend) {
+func waitForSyncerToCatchUp(
+	ctx context.Context,
+	t *testing.T,
+	syncer *l1infotreesync.L1InfoTreeSync,
+	client *simulated.Backend,
+) {
 	t.Helper()
 	for {
 		lastBlockNum, err := client.Client().BlockNumber(ctx)

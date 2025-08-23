@@ -45,7 +45,15 @@ func TestE2EL1toEVML2(t *testing.T) {
 		// Send bridges to L2, wait for GER to be injected on L2
 		amount := new(big.Int).SetUint64(uint64(i) + 1)
 		setup.L1Environment.Auth.Value = amount
-		_, err := setup.L1Environment.BridgeContract.BridgeAsset(setup.L1Environment.Auth, setup.NetworkIDL2, setup.L2Environment.Auth.From, amount, common.Address{}, true, nil)
+		_, err := setup.L1Environment.BridgeContract.BridgeAsset(
+			setup.L1Environment.Auth,
+			setup.NetworkIDL2,
+			setup.L2Environment.Auth.From,
+			amount,
+			common.Address{},
+			true,
+			nil,
+		)
 		require.NoError(t, err)
 		setup.L1Environment.SimBackend.Commit()
 		time.Sleep(time.Millisecond * 300)
@@ -98,7 +106,9 @@ func TestE2EL1toEVML2(t *testing.T) {
 		isClaimed, err := setup.L2Environment.BridgeContract.IsClaimed(&bind.CallOpts{Pending: false}, i, 0)
 		require.NoError(t, err)
 		if !isClaimed {
-			t.Skipf("Skipping test assertion - test environment may not be configured for network ID usage. This is expected if contracts were deployed expecting chain IDs.")
+			t.Skipf(
+				"Skipping test assertion - test environment may not be configured for network ID usage. This is expected if contracts were deployed expecting chain IDs.",
+			)
 		}
 	}
 }

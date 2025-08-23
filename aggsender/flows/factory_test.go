@@ -115,10 +115,22 @@ func TestNewFlow(t *testing.T) {
 			mockL2BridgeSyncer.EXPECT().OriginNetwork().Return(1).Maybe()
 			mockLogger := log.WithFields("test", "NewFlow")
 
-			mockL1Client.EXPECT().CallContract(mock.Anything, mock.Anything, mock.Anything).Return([]byte{1, 2, 3}, nil).Maybe()
-			mockL1Client.EXPECT().CodeAt(mock.Anything, mock.Anything, mock.Anything).Return([]byte{1, 2, 3}, nil).Maybe()
-			mockL2Client.EXPECT().CallContract(mock.Anything, mock.Anything, mock.Anything).Return([]byte{1, 2, 3}, nil).Maybe()
-			mockL2Client.EXPECT().CodeAt(mock.Anything, mock.Anything, mock.Anything).Return([]byte{1, 2, 3}, nil).Maybe()
+			mockL1Client.EXPECT().
+				CallContract(mock.Anything, mock.Anything, mock.Anything).
+				Return([]byte{1, 2, 3}, nil).
+				Maybe()
+			mockL1Client.EXPECT().
+				CodeAt(mock.Anything, mock.Anything, mock.Anything).
+				Return([]byte{1, 2, 3}, nil).
+				Maybe()
+			mockL2Client.EXPECT().
+				CallContract(mock.Anything, mock.Anything, mock.Anything).
+				Return([]byte{1, 2, 3}, nil).
+				Maybe()
+			mockL2Client.EXPECT().
+				CodeAt(mock.Anything, mock.Anything, mock.Anything).
+				Return([]byte{1, 2, 3}, nil).
+				Maybe()
 			flow, err := NewFlow(
 				ctx,
 				tc.cfg,

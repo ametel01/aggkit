@@ -220,7 +220,12 @@ func (c *ClaimSponsor) claim(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("error calling waitForTxResult for tx %s: %w", claim.TxID, err)
 	}
-	c.logger.Infof("tx %s with global index %s is processed, status: %s", claim.TxID, claim.GlobalIndex.String(), status)
+	c.logger.Infof(
+		"tx %s with global index %s is processed, status: %s",
+		claim.TxID,
+		claim.GlobalIndex.String(),
+		status,
+	)
 	return c.updateClaimStatus(claim.GlobalIndex, status)
 }
 

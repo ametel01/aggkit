@@ -132,7 +132,11 @@ func (c *ConfigRender) ResolveCycle(partialResolvedConfigData string) (string, e
 
 		pendinVars = c.GetVars(tmpData)
 		if len(pendinVars) == len(previousVars) {
-			return partialResolvedConfigData, fmt.Errorf("not resolved cycle vars: %v. Err: %w", pendinVars, ErrCycleVars)
+			return partialResolvedConfigData, fmt.Errorf(
+				"not resolved cycle vars: %v. Err: %w",
+				pendinVars,
+				ErrCycleVars,
+			)
 		}
 		previousData = tmpData
 	}

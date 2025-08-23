@@ -75,7 +75,12 @@ func dialGeth(url string, retries int, delay time.Duration) (*ethclient.Client, 
 
 // waitForReceipt waits for the given transaction to get included in a block (namely there should be a receipt for it).
 // In case it fails for predefined number of times an error is propagated.
-func waitForReceipt(ctx context.Context, client *ethclient.Client, txHash common.Hash, maxAttempts int) (*types.Receipt, error) {
+func waitForReceipt(
+	ctx context.Context,
+	client *ethclient.Client,
+	txHash common.Hash,
+	maxAttempts int,
+) (*types.Receipt, error) {
 	var (
 		receipt  *types.Receipt
 		err      error

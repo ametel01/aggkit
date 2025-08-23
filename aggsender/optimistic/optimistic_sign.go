@@ -96,7 +96,10 @@ func (o *OptimisticSignatureCalculatorImpl) Sign(ctx context.Context,
 	o.logger.Infof("OptimisticSignatureCalculatorImpl.Sign agg:%s", aggregationProofPublicValues.String())
 	aggregationProofPublicValuesHash, err := aggregationProofPublicValues.Hash()
 	if err != nil {
-		return nil, "", fmt.Errorf("aggregationProofPublicValues.Hash: error hashing aggregationProofPublicValues: %w", err)
+		return nil, "", fmt.Errorf(
+			"aggregationProofPublicValues.Hash: error hashing aggregationProofPublicValues: %w",
+			err,
+		)
 	}
 	importedBridgesHash := optimistichash.CalculateCommitImportedBrdigeExitsHashFromClaims(claims)
 

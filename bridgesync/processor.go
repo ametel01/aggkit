@@ -285,7 +285,13 @@ type processor struct {
 	networkId uint32
 }
 
-func newProcessor(dbPath string, name string, logger *log.Logger, enqueuer ClaimEnqueuer, networkId uint32) (*processor, error) {
+func newProcessor(
+	dbPath string,
+	name string,
+	logger *log.Logger,
+	enqueuer ClaimEnqueuer,
+	networkId uint32,
+) (*processor, error) {
 	err := migrations.RunMigrations(dbPath)
 	if err != nil {
 		return nil, err
@@ -620,7 +626,11 @@ func (p *processor) GetLegacyTokenMigrations(
 	whereClause := ""
 	legacyTokenMigrationsCount, err := p.GetTotalNumberOfRecords(legacyTokenMigrationTableName, whereClause)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to fetch the total number of %s entries: %w", legacyTokenMigrationTableName, err)
+		return nil, 0, fmt.Errorf(
+			"failed to fetch the total number of %s entries: %w",
+			legacyTokenMigrationTableName,
+			err,
+		)
 	}
 
 	if legacyTokenMigrationsCount == 0 {
@@ -980,8 +990,13 @@ func (p *processor) calculateOffset(pageNumber, pageSize uint32,
 	recordsCount int, tableName string) (uint32, error) {
 	offset := (pageNumber - 1) * pageSize
 	if offset >= uint32(recordsCount) {
-		msg := fmt.Sprintf("invalid page number for given page size and total number of %s (page=%d, size=%d, total=%d)",
-			tableName, pageNumber, pageSize, recordsCount)
+		msg := fmt.Sprintf(
+			"invalid page number for given page size and total number of %s (page=%d, size=%d, total=%d)",
+			tableName,
+			pageNumber,
+			pageSize,
+			recordsCount,
+		)
 		p.log.Debugf(msg)
 		return 0, errors.New(msg)
 	}

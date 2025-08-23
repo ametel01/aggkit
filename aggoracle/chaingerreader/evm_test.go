@@ -34,7 +34,8 @@ func TestNewChainGERReader(t *testing.T) {
 	t.Run("failure - invalid contract address", func(t *testing.T) {
 		t.Parallel()
 		mockL2GERManager := mocks.NewL2GERManagerContract(t)
-		mockL2GERManager.On("BridgeAddress", (*bind.CallOpts)(nil)).Return(invalidAddress, errors.New("invalid address"))
+		mockL2GERManager.On("BridgeAddress", (*bind.CallOpts)(nil)).
+			Return(invalidAddress, errors.New("invalid address"))
 
 		l2Etherman, err := newEVMChainGERReader(mockL2GERManager, invalidAddress)
 		require.Error(t, err)
@@ -84,7 +85,10 @@ func TestGetInjectedGERsForRange(t *testing.T) {
 		gerReader, err := NewEVMChainGERReader(setup.GERAddr, setup.SimBackend.Client())
 		require.NoError(t, err)
 
-		tx, err := setup.GERContract.InsertGlobalExitRoot(setup.Auth, common.HexToHash("0x1234567890abcdef1234567890abcdef12345678"))
+		tx, err := setup.GERContract.InsertGlobalExitRoot(
+			setup.Auth,
+			common.HexToHash("0x1234567890abcdef1234567890abcdef12345678"),
+		)
 		require.NoError(t, err)
 
 		// commit one block so the current block is block 6

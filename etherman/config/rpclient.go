@@ -13,8 +13,8 @@ var (
 
 type RPCClientConfig struct {
 	URL         string         `mapstructure:"URL"`
-	Mode        RPCMode        `jsonschema:"enum=basic, enum=op" mapstructure:"Mode"`
-	ExtraParams map[string]any `jsonschema:"omitempty" mapstructure:",remain"`
+	Mode        RPCMode        `mapstructure:"Mode"    jsonschema:"enum=basic, enum=op"`
+	ExtraParams map[string]any `mapstructure:",remain" jsonschema:"omitempty"`
 }
 
 func (c RPCClientConfig) GetString(key string) (string, error) {

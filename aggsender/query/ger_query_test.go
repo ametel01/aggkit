@@ -28,39 +28,49 @@ func Test_GetInjectedGERsProofs(t *testing.T) {
 		{
 			name: "error getting injected GERs for range",
 			mockFn: func(mockChainGERReader *mocks.ChainGERReader, mockL1InfoTreeQuery *mocks.L1InfoTreeDataQuerier) {
-				mockChainGERReader.EXPECT().GetInjectedGERsForRange(ctx, uint64(1), uint64(10)).Return(nil, errors.New("some error"))
+				mockChainGERReader.EXPECT().
+					GetInjectedGERsForRange(ctx, uint64(1), uint64(10)).
+					Return(nil, errors.New("some error"))
 			},
 			expectedError: "error getting injected GERs for range 1 : 10: some error",
 		},
 		{
 			name: "error getting proof for GER",
 			mockFn: func(mockChainGERReader *mocks.ChainGERReader, mockL1InfoTreeQuery *mocks.L1InfoTreeDataQuerier) {
-				mockChainGERReader.EXPECT().GetInjectedGERsForRange(ctx, uint64(1), uint64(10)).Return(map[common.Hash]chaingerreader.InjectedGER{
-					common.HexToHash("0x1"): {GlobalExitRoot: common.HexToHash("0x1")},
-				}, nil)
-				mockL1InfoTreeQuery.EXPECT().GetProofForGER(ctx, common.HexToHash("0x1"), common.HexToHash("0x2")).Return(nil, treetypes.Proof{}, errors.New("some error"))
+				mockChainGERReader.EXPECT().
+					GetInjectedGERsForRange(ctx, uint64(1), uint64(10)).
+					Return(map[common.Hash]chaingerreader.InjectedGER{
+						common.HexToHash("0x1"): {GlobalExitRoot: common.HexToHash("0x1")},
+					}, nil)
+				mockL1InfoTreeQuery.EXPECT().
+					GetProofForGER(ctx, common.HexToHash("0x1"), common.HexToHash("0x2")).
+					Return(nil, treetypes.Proof{}, errors.New("some error"))
 			},
 			expectedError: "error getting proof for GER: 0x0000000000000000000000000000000000000000000000000000000000000001: some error",
 		},
 		{
 			name: "success",
 			mockFn: func(mockChainGERReader *mocks.ChainGERReader, mockL1InfoTreeQuery *mocks.L1InfoTreeDataQuerier) {
-				mockChainGERReader.EXPECT().GetInjectedGERsForRange(ctx, uint64(1), uint64(10)).Return(map[common.Hash]chaingerreader.InjectedGER{
-					common.HexToHash("0x1"): {GlobalExitRoot: common.HexToHash("0x1"), BlockNumber: 111},
-				}, nil)
-				mockL1InfoTreeQuery.EXPECT().GetProofForGER(ctx, common.HexToHash("0x1"), common.HexToHash("0x2")).Return(
-					&l1infotreesync.L1InfoTreeLeaf{
-						L1InfoTreeIndex:   1,
-						BlockNumber:       111,
-						PreviousBlockHash: common.HexToHash("0x22"),
-						Timestamp:         112,
-						MainnetExitRoot:   common.HexToHash("0x11"),
-						RollupExitRoot:    common.HexToHash("0x33"),
-						GlobalExitRoot:    common.HexToHash("0x1"),
-					},
-					treetypes.Proof{},
-					nil,
-				)
+				mockChainGERReader.EXPECT().
+					GetInjectedGERsForRange(ctx, uint64(1), uint64(10)).
+					Return(map[common.Hash]chaingerreader.InjectedGER{
+						common.HexToHash("0x1"): {GlobalExitRoot: common.HexToHash("0x1"), BlockNumber: 111},
+					}, nil)
+				mockL1InfoTreeQuery.EXPECT().
+					GetProofForGER(ctx, common.HexToHash("0x1"), common.HexToHash("0x2")).
+					Return(
+						&l1infotreesync.L1InfoTreeLeaf{
+							L1InfoTreeIndex:   1,
+							BlockNumber:       111,
+							PreviousBlockHash: common.HexToHash("0x22"),
+							Timestamp:         112,
+							MainnetExitRoot:   common.HexToHash("0x11"),
+							RollupExitRoot:    common.HexToHash("0x33"),
+							GlobalExitRoot:    common.HexToHash("0x1"),
+						},
+						treetypes.Proof{},
+						nil,
+					)
 			},
 			expectedProofs: map[common.Hash]*agglayertypes.ProvenInsertedGERWithBlockNumber{
 				common.HexToHash("0x1"): {
@@ -97,7 +107,12 @@ func Test_GetInjectedGERsProofs(t *testing.T) {
 
 			tc.mockFn(mockGERReader, mockL1InfoTreeQuery)
 
-			proofs, err := gerQuerier.GetInjectedGERsProofs(ctx, &treetypes.Root{Hash: common.HexToHash("0x2"), Index: 10}, 1, 10)
+			proofs, err := gerQuerier.GetInjectedGERsProofs(
+				ctx,
+				&treetypes.Root{Hash: common.HexToHash("0x2"), Index: 10},
+				1,
+				10,
+			)
 			if tc.expectedError != "" {
 				require.ErrorContains(t, err, tc.expectedError)
 			} else {

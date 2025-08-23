@@ -293,7 +293,9 @@ func TestGetImportedBridgeExits(t *testing.T) {
 							},
 						},
 						ProofLeafLER: &agglayertypes.MerkleProof{
-							Root:  common.HexToHash("0xc52019815b51acf67a715cae6794a20083d63fd9af45783b7adf69123dae92c8"),
+							Root: common.HexToHash(
+								"0xc52019815b51acf67a715cae6794a20083d63fd9af45783b7adf69123dae92c8",
+							),
 							Proof: mockProof,
 						},
 						ProofLERToRER: &agglayertypes.MerkleProof{
@@ -382,7 +384,9 @@ func TestGetImportedBridgeExits(t *testing.T) {
 							},
 						},
 						ProofLeafLER: &agglayertypes.MerkleProof{
-							Root:  common.HexToHash("0x105e0f1144e57f6fb63f1dfc5083b1f59be3512be7cf5e63523779ad14a4d987"),
+							Root: common.HexToHash(
+								"0x105e0f1144e57f6fb63f1dfc5083b1f59be3512be7cf5e63523779ad14a4d987",
+							),
 							Proof: mockProof,
 						},
 						ProofLERToRER: &agglayertypes.MerkleProof{
@@ -599,7 +603,9 @@ func TestBuildCertificate(t *testing.T) {
 								},
 							},
 							ProofLeafLER: &agglayertypes.MerkleProof{
-								Root:  common.HexToHash("0xc52019815b51acf67a715cae6794a20083d63fd9af45783b7adf69123dae92c8"),
+								Root: common.HexToHash(
+									"0xc52019815b51acf67a715cae6794a20083d63fd9af45783b7adf69123dae92c8",
+								),
 								Proof: mockProof,
 							},
 							ProofLERToRER: &agglayertypes.MerkleProof{
@@ -617,13 +623,17 @@ func TestBuildCertificate(t *testing.T) {
 			},
 			mockFn: func() {
 				mockL2BridgeQuerier.EXPECT().OriginNetwork().Return(uint32(1))
-				mockL2BridgeQuerier.EXPECT().GetExitRootByIndex(mock.Anything, mock.Anything).Return(common.HexToHash("0x789"), nil)
-				mockL1InfoTreeQuerier.EXPECT().GetProofForGER(mock.Anything, mock.Anything, mock.Anything).Return(&l1infotreesync.L1InfoTreeLeaf{
-					L1InfoTreeIndex:   1,
-					Timestamp:         123456789,
-					PreviousBlockHash: common.HexToHash("0xabc"),
-					GlobalExitRoot:    common.HexToHash("0x7891"),
-				}, mockProof, nil)
+				mockL2BridgeQuerier.EXPECT().
+					GetExitRootByIndex(mock.Anything, mock.Anything).
+					Return(common.HexToHash("0x789"), nil)
+				mockL1InfoTreeQuerier.EXPECT().
+					GetProofForGER(mock.Anything, mock.Anything, mock.Anything).
+					Return(&l1infotreesync.L1InfoTreeLeaf{
+						L1InfoTreeIndex:   1,
+						Timestamp:         123456789,
+						PreviousBlockHash: common.HexToHash("0xabc"),
+						GlobalExitRoot:    common.HexToHash("0x7891"),
+					}, mockProof, nil)
 			},
 			expectedError: false,
 		},
@@ -673,12 +683,14 @@ func TestBuildCertificate(t *testing.T) {
 				Height:           1,
 			},
 			mockFn: func() {
-				mockL1InfoTreeQuerier.EXPECT().GetProofForGER(mock.Anything, mock.Anything, mock.Anything).Return(&l1infotreesync.L1InfoTreeLeaf{
-					L1InfoTreeIndex:   1,
-					Timestamp:         123456789,
-					PreviousBlockHash: common.HexToHash("0xabc"),
-					GlobalExitRoot:    common.HexToHash("0x7891"),
-				}, mockProof, nil)
+				mockL1InfoTreeQuerier.EXPECT().
+					GetProofForGER(mock.Anything, mock.Anything, mock.Anything).
+					Return(&l1infotreesync.L1InfoTreeLeaf{
+						L1InfoTreeIndex:   1,
+						Timestamp:         123456789,
+						PreviousBlockHash: common.HexToHash("0xabc"),
+						GlobalExitRoot:    common.HexToHash("0x7891"),
+					}, mockProof, nil)
 			},
 			expectedCert:  nil,
 			expectedError: true,
@@ -782,7 +794,9 @@ func Test_PPFlow_GetCertificateBuildParams(t *testing.T) {
 				mockL1InfoTreeQuerier *mocks.L1InfoTreeDataQuerier) {
 				mockL2BridgeQuerier.EXPECT().GetLastProcessedBlock(ctx).Return(uint64(10), nil)
 				mockStorage.EXPECT().GetLastSentCertificateHeader().Return(&types.CertificateHeader{ToBlock: 5}, nil)
-				mockL2BridgeQuerier.EXPECT().GetBridgesAndClaims(ctx, uint64(6), uint64(10)).Return(nil, nil, errors.New("some error"))
+				mockL2BridgeQuerier.EXPECT().
+					GetBridgesAndClaims(ctx, uint64(6), uint64(10)).
+					Return(nil, nil, errors.New("some error"))
 			},
 			expectedError: "some error",
 		},
@@ -793,7 +807,9 @@ func Test_PPFlow_GetCertificateBuildParams(t *testing.T) {
 				mockL1InfoTreeQuerier *mocks.L1InfoTreeDataQuerier) {
 				mockL2BridgeQuerier.EXPECT().GetLastProcessedBlock(ctx).Return(uint64(10), nil)
 				mockStorage.EXPECT().GetLastSentCertificateHeader().Return(&types.CertificateHeader{ToBlock: 5}, nil)
-				mockL2BridgeQuerier.EXPECT().GetBridgesAndClaims(ctx, uint64(6), uint64(10)).Return([]bridgesync.Bridge{}, []bridgesync.Claim{}, nil)
+				mockL2BridgeQuerier.EXPECT().
+					GetBridgesAndClaims(ctx, uint64(6), uint64(10)).
+					Return([]bridgesync.Bridge{}, []bridgesync.Claim{}, nil)
 			},
 			expectedParams: nil,
 		},
@@ -805,7 +821,9 @@ func Test_PPFlow_GetCertificateBuildParams(t *testing.T) {
 				mockL1InfoTreeQuerier *mocks.L1InfoTreeDataQuerier) {
 				mockL2BridgeQuerier.EXPECT().GetLastProcessedBlock(ctx).Return(uint64(10), nil)
 				mockStorage.EXPECT().GetLastSentCertificateHeader().Return(&types.CertificateHeader{ToBlock: 5}, nil)
-				mockL2BridgeQuerier.EXPECT().GetBridgesAndClaims(ctx, uint64(6), uint64(10)).Return([]bridgesync.Bridge{}, []bridgesync.Claim{{}}, nil)
+				mockL2BridgeQuerier.EXPECT().
+					GetBridgesAndClaims(ctx, uint64(6), uint64(10)).
+					Return([]bridgesync.Bridge{}, []bridgesync.Claim{{}}, nil)
 			},
 			expectedParams: nil,
 		},
@@ -820,13 +838,15 @@ func Test_PPFlow_GetCertificateBuildParams(t *testing.T) {
 				rer := common.HexToHash("0x1")
 				mer := common.HexToHash("0x2")
 				ger := calculateGER(mer, rer)
-				mockL2BridgeQuerier.EXPECT().GetBridgesAndClaims(ctx, uint64(6), uint64(10)).Return([]bridgesync.Bridge{}, []bridgesync.Claim{
-					{
-						BlockNum:        1,
-						GlobalExitRoot:  ger,
-						RollupExitRoot:  rer,
-						MainnetExitRoot: mer,
-					}}, nil)
+				mockL2BridgeQuerier.EXPECT().
+					GetBridgesAndClaims(ctx, uint64(6), uint64(10)).
+					Return([]bridgesync.Bridge{}, []bridgesync.Claim{
+						{
+							BlockNum:        1,
+							GlobalExitRoot:  ger,
+							RollupExitRoot:  rer,
+							MainnetExitRoot: mer,
+						}}, nil)
 				mockL1InfoTreeQuerier.EXPECT().GetLatestFinalizedL1InfoRoot(ctx).Return(
 					&treetypes.Root{Hash: common.HexToHash("0x123"), BlockNum: 1}, nil, nil)
 			},
@@ -871,12 +891,14 @@ func Test_PPFlow_GetCertificateBuildParams(t *testing.T) {
 				ger := calculateGER(mer, rer)
 				mockL2BridgeQuerier.EXPECT().GetLastProcessedBlock(ctx).Return(uint64(10), nil)
 				mockStorage.EXPECT().GetLastSentCertificateHeader().Return(&types.CertificateHeader{ToBlock: 5}, nil)
-				mockL2BridgeQuerier.EXPECT().GetBridgesAndClaims(ctx, uint64(6), uint64(10)).Return([]bridgesync.Bridge{{}}, []bridgesync.Claim{
-					{
-						GlobalExitRoot:  ger,
-						RollupExitRoot:  rer,
-						MainnetExitRoot: mer,
-					}}, nil)
+				mockL2BridgeQuerier.EXPECT().
+					GetBridgesAndClaims(ctx, uint64(6), uint64(10)).
+					Return([]bridgesync.Bridge{{}}, []bridgesync.Claim{
+						{
+							GlobalExitRoot:  ger,
+							RollupExitRoot:  rer,
+							MainnetExitRoot: mer,
+						}}, nil)
 				mockL1InfoTreeQuerier.On("GetLatestFinalizedL1InfoRoot", ctx).Return(nil, nil, errors.New("some error"))
 			},
 			expectedError: "ppFlow - error getting latest finalized L1 info root: some error",
@@ -891,12 +913,14 @@ func Test_PPFlow_GetCertificateBuildParams(t *testing.T) {
 				ger := calculateGER(mer, rer)
 				mockL2BridgeQuerier.EXPECT().GetLastProcessedBlock(ctx).Return(uint64(10), nil)
 				mockStorage.EXPECT().GetLastSentCertificateHeader().Return(&types.CertificateHeader{ToBlock: 5}, nil)
-				mockL2BridgeQuerier.EXPECT().GetBridgesAndClaims(ctx, uint64(6), uint64(10)).Return([]bridgesync.Bridge{{}}, []bridgesync.Claim{
-					{
-						GlobalExitRoot:  ger,
-						RollupExitRoot:  rer,
-						MainnetExitRoot: mer,
-					}}, nil)
+				mockL2BridgeQuerier.EXPECT().
+					GetBridgesAndClaims(ctx, uint64(6), uint64(10)).
+					Return([]bridgesync.Bridge{{}}, []bridgesync.Claim{
+						{
+							GlobalExitRoot:  ger,
+							RollupExitRoot:  rer,
+							MainnetExitRoot: mer,
+						}}, nil)
 				mockL1InfoTreeQuerier.EXPECT().GetLatestFinalizedL1InfoRoot(ctx).Return(
 					&treetypes.Root{Hash: common.HexToHash("0x123"), BlockNum: 10}, nil, nil)
 			},

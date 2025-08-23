@@ -437,7 +437,11 @@ func TestFilterQueryToString(t *testing.T) {
 		ToBlock:   new(big.Int).SetUint64(1100),
 	}
 
-	assert.Equal(t, "FromBlock: 1000, ToBlock: 1100, Addresses: [0x000000000000000000000000000000000000f000 0x000000000000000000000000000000000000ABcD], Topics: []", filterQueryToString(query))
+	assert.Equal(
+		t,
+		"FromBlock: 1000, ToBlock: 1100, Addresses: [0x000000000000000000000000000000000000f000 0x000000000000000000000000000000000000ABcD], Topics: []",
+		filterQueryToString(query),
+	)
 
 	query = ethereum.FilterQuery{
 		FromBlock: new(big.Int).SetUint64(1000),
@@ -445,7 +449,11 @@ func TestFilterQueryToString(t *testing.T) {
 		ToBlock:   new(big.Int).SetUint64(1100),
 		Topics:    [][]common.Hash{{common.HexToHash("0x1234"), common.HexToHash("0x5678")}},
 	}
-	assert.Equal(t, "FromBlock: 1000, ToBlock: 1100, Addresses: [0x000000000000000000000000000000000000f000 0x000000000000000000000000000000000000ABcD], Topics: [[0x0000000000000000000000000000000000000000000000000000000000001234 0x0000000000000000000000000000000000000000000000000000000000005678]]", filterQueryToString(query))
+	assert.Equal(
+		t,
+		"FromBlock: 1000, ToBlock: 1100, Addresses: [0x000000000000000000000000000000000000f000 0x000000000000000000000000000000000000ABcD], Topics: [[0x0000000000000000000000000000000000000000000000000000000000001234 0x0000000000000000000000000000000000000000000000000000000000005678]]",
+		filterQueryToString(query),
+	)
 }
 
 func TestGetLogs(t *testing.T) {
@@ -468,14 +476,35 @@ func TestGetLogs(t *testing.T) {
 
 func TestDownloadBeforeFinalized(t *testing.T) {
 	steps := []evmTestStep{
-		{finalizedBlock: 33, fromBlock: 1, toBlock: 11, waitForNewBlocks: true, waitForNewBlocksRequest: 0, waitForNewBlockReply: 35, getBlockHeader: &EVMBlockHeader{Num: 11}},
-		{finalizedBlock: 33, fromBlock: 12, toBlock: 22, eventsReponse: EVMBlocks{createEVMBlock(t, 14, true)}, getBlockHeader: &EVMBlockHeader{Num: 22}},
+		{
+			finalizedBlock:          33,
+			fromBlock:               1,
+			toBlock:                 11,
+			waitForNewBlocks:        true,
+			waitForNewBlocksRequest: 0,
+			waitForNewBlockReply:    35,
+			getBlockHeader:          &EVMBlockHeader{Num: 11},
+		},
+		{
+			finalizedBlock: 33,
+			fromBlock:      12,
+			toBlock:        22,
+			eventsReponse:  EVMBlocks{createEVMBlock(t, 14, true)},
+			getBlockHeader: &EVMBlockHeader{Num: 22},
+		},
 		// It returns the last block of range, so it don't need to create a empty one
 		{finalizedBlock: 33, fromBlock: 23, toBlock: 33, eventsReponse: EVMBlocks{createEVMBlock(t, 33, true)}},
 		// It reach the top of chain (block 35)
 		{finalizedBlock: 33, fromBlock: 34, toBlock: 35},
 		// Previous iteration we reach top of chain so we need update the latest block
-		{finalizedBlock: 33, fromBlock: 34, toBlock: 54, waitForNewBlocks: true, waitForNewBlocksRequest: 35, waitForNewBlockReply: 60},
+		{
+			finalizedBlock:          33,
+			fromBlock:               34,
+			toBlock:                 54,
+			waitForNewBlocks:        true,
+			waitForNewBlocksRequest: 35,
+			waitForNewBlockReply:    60,
+		},
 		// finalized block is 35, so we can reduce emit an emptyBlock and reduce the range
 		{finalizedBlock: 35, fromBlock: 34, toBlock: 60, getBlockHeader: &EVMBlockHeader{Num: 35}},
 		{finalizedBlock: 35, fromBlock: 36, toBlock: 46},
@@ -484,19 +513,59 @@ func TestDownloadBeforeFinalized(t *testing.T) {
 		{finalizedBlock: 35, fromBlock: 37, toBlock: 47},
 		{finalizedBlock: 57, fromBlock: 37, toBlock: 57, eventsReponse: EVMBlocks{createEVMBlock(t, 57, false)}},
 		{finalizedBlock: 61, fromBlock: 58, toBlock: 60, eventsReponse: EVMBlocks{createEVMBlock(t, 60, false)}},
-		{finalizedBlock: 61, fromBlock: 61, toBlock: 61, waitForNewBlocks: true, waitForNewBlocksRequest: 60, waitForNewBlockReply: 61, getBlockHeader: &EVMBlockHeader{Num: 61}},
-		{finalizedBlock: 61, fromBlock: 62, toBlock: 62, waitForNewBlocks: true, waitForNewBlocksRequest: 61, waitForNewBlockReply: 62},
+		{
+			finalizedBlock:          61,
+			fromBlock:               61,
+			toBlock:                 61,
+			waitForNewBlocks:        true,
+			waitForNewBlocksRequest: 60,
+			waitForNewBlockReply:    61,
+			getBlockHeader:          &EVMBlockHeader{Num: 61},
+		},
+		{
+			finalizedBlock:          61,
+			fromBlock:               62,
+			toBlock:                 62,
+			waitForNewBlocks:        true,
+			waitForNewBlocksRequest: 61,
+			waitForNewBlockReply:    62,
+		},
 	}
 	runSteps(t, 1, steps)
 }
 
 func TestCaseAskLastBlockIfFinalitySameAsTargetBlock(t *testing.T) {
 	steps := []evmTestStep{
-		{finalizedBlock: 105, fromBlock: 99, toBlock: 105, waitForNewBlocks: true, waitForNewBlocksRequest: 0, waitForNewBlockReply: 105, getBlockHeader: &EVMBlockHeader{Num: 105}},
-		{finalizedBlock: 110, fromBlock: 106, toBlock: 110, waitForNewBlocks: true, waitForNewBlocksRequest: 105, waitForNewBlockReply: 110, getBlockHeader: &EVMBlockHeader{Num: 110}},
+		{
+			finalizedBlock:          105,
+			fromBlock:               99,
+			toBlock:                 105,
+			waitForNewBlocks:        true,
+			waitForNewBlocksRequest: 0,
+			waitForNewBlockReply:    105,
+			getBlockHeader:          &EVMBlockHeader{Num: 105},
+		},
+		{
+			finalizedBlock:          110,
+			fromBlock:               106,
+			toBlock:                 110,
+			waitForNewBlocks:        true,
+			waitForNewBlocksRequest: 105,
+			waitForNewBlockReply:    110,
+			getBlockHeader:          &EVMBlockHeader{Num: 110},
+		},
 		// Here is the bug:
 		// - the range 111-115 returns block: 106. So the code must emit the block 106 and also the block 115 as empty (last block)
-		{finalizedBlock: 115, fromBlock: 111, toBlock: 115, waitForNewBlocks: true, waitForNewBlocksRequest: 110, waitForNewBlockReply: 115, eventsReponse: EVMBlocks{createEVMBlock(t, 106, false)}, getBlockHeader: &EVMBlockHeader{Num: 115}},
+		{
+			finalizedBlock:          115,
+			fromBlock:               111,
+			toBlock:                 115,
+			waitForNewBlocks:        true,
+			waitForNewBlocksRequest: 110,
+			waitForNewBlockReply:    115,
+			eventsReponse:           EVMBlocks{createEVMBlock(t, 106, false)},
+			getBlockHeader:          &EVMBlockHeader{Num: 115},
+		},
 	}
 	runSteps(t, 99, steps)
 }
@@ -510,7 +579,10 @@ func buildAppender() LogAppenderMap {
 	return appender
 }
 
-func NewTestDownloader(t *testing.T, retryPeriod time.Duration) (*EVMDownloader, *aggkittypesmocks.BaseEthereumClienter) {
+func NewTestDownloader(
+	t *testing.T,
+	retryPeriod time.Duration,
+) (*EVMDownloader, *aggkittypesmocks.BaseEthereumClienter) {
 	t.Helper()
 
 	rh := &RetryHandler{
@@ -569,16 +641,22 @@ func runSteps(t *testing.T, fromBlock uint64, steps []evmTestStep) {
 		downloader.setStopDownloaderOnIterationN(i + 1)
 		expectedBlocks := EVMBlocks{}
 		for _, step := range steps[:i+1] {
-			mockEthDownloader.On("GetLastFinalizedBlock", mock.Anything).Return(&types.Header{Number: big.NewInt(int64(step.finalizedBlock))}, nil).Once()
+			mockEthDownloader.On("GetLastFinalizedBlock", mock.Anything).
+				Return(&types.Header{Number: big.NewInt(int64(step.finalizedBlock))}, nil).
+				Once()
 			if step.waitForNewBlocks {
-				mockEthDownloader.On("WaitForNewBlocks", mock.Anything, step.waitForNewBlocksRequest).Return(step.waitForNewBlockReply).Once()
+				mockEthDownloader.On("WaitForNewBlocks", mock.Anything, step.waitForNewBlocksRequest).
+					Return(step.waitForNewBlockReply).
+					Once()
 			}
 			mockEthDownloader.On("GetEventsByBlockRange", mock.Anything, step.fromBlock, step.toBlock).
 				Return(step.eventsReponse, false).Once()
 			expectedBlocks = append(expectedBlocks, step.eventsReponse...)
 			if step.getBlockHeader != nil {
 				log.Infof("iteration:%d : GetBlockHeader(%d) ", i, step.getBlockHeader.Num)
-				mockEthDownloader.On("GetBlockHeader", mock.Anything, step.getBlockHeader.Num).Return(*step.getBlockHeader, false).Once()
+				mockEthDownloader.On("GetBlockHeader", mock.Anything, step.getBlockHeader.Num).
+					Return(*step.getBlockHeader, false).
+					Once()
 				expectedBlocks = append(expectedBlocks, &EVMBlock{
 					EVMBlockHeader:   *step.getBlockHeader,
 					IsFinalizedBlock: step.getBlockHeader.Num <= step.finalizedBlock,

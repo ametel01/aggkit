@@ -33,7 +33,9 @@ func TestGetLastLocalExitRoot(t *testing.T) {
 			mockFn: func(rdq *mocks.RollupDataQuerier) {
 				rdq.EXPECT().GetRollupData(mock.Anything).
 					Return(polygonrollupmanager.PolygonRollupManagerRollupDataReturn{
-						LastLocalExitRoot: common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"),
+						LastLocalExitRoot: common.HexToHash(
+							"0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+						),
 					}, nil)
 			},
 			expectedLER: common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"),

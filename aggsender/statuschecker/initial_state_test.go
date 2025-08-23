@@ -162,7 +162,11 @@ func TestRegularCases(t *testing.T) {
 			localCert:       nil,
 			agglayerSettled: nil,
 			agglayerPending: &certTestData{hash1, 0, agglayertypes.InError},
-			resultActions:   &initialStateResultTest{InitialStatusActionInsertNewCert, "", &certTestData{hash1, 0, agglayertypes.InError}},
+			resultActions: &initialStateResultTest{
+				InitialStatusActionInsertNewCert,
+				"",
+				&certTestData{hash1, 0, agglayertypes.InError},
+			},
 		},
 		{
 			name:            "03| nil 				| nil 					| ID1, h1  , inError   			|none",
@@ -176,7 +180,11 @@ func TestRegularCases(t *testing.T) {
 			localCert:       nil,
 			agglayerSettled: nil,
 			agglayerPending: &certTestData{hash1, 0, agglayertypes.Proven},
-			resultActions:   &initialStateResultTest{InitialStatusActionInsertNewCert, "", &certTestData{hash1, 0, agglayertypes.Proven}},
+			resultActions: &initialStateResultTest{
+				InitialStatusActionInsertNewCert,
+				"",
+				&certTestData{hash1, 0, agglayertypes.Proven},
+			},
 		},
 		{
 			name:            "05| nil 				| nil 					| ID1, h1  , !=inError  		| wait, h1 is not next cert but we wait until pass to inError",
@@ -190,28 +198,44 @@ func TestRegularCases(t *testing.T) {
 			localCert:       nil,
 			agglayerSettled: &certTestData{hash1, 1, agglayertypes.Proven},
 			agglayerPending: nil,
-			resultActions:   &initialStateResultTest{InitialStatusActionInsertNewCert, "", &certTestData{hash1, 1, agglayertypes.Proven}},
+			resultActions: &initialStateResultTest{
+				InitialStatusActionInsertNewCert,
+				"",
+				&certTestData{hash1, 1, agglayertypes.Proven},
+			},
 		},
 		{
 			name:            "07| nil 				| ID1, h1 , NA	 		| ID2, h2  , inError  			| store(PENDING)",
 			localCert:       nil,
 			agglayerSettled: &certTestData{hash1, 1, agglayertypes.Proven},
 			agglayerPending: &certTestData{hash2, 2, agglayertypes.InError},
-			resultActions:   &initialStateResultTest{InitialStatusActionInsertNewCert, "", &certTestData{hash2, 2, agglayertypes.InError}},
+			resultActions: &initialStateResultTest{
+				InitialStatusActionInsertNewCert,
+				"",
+				&certTestData{hash2, 2, agglayertypes.InError},
+			},
 		},
 		{
 			name:            "08| nil 				| ID1, h1 , NA	 		| ID2, h2  , !=inError  		| store(PENDING) h2 is next to h1",
 			localCert:       nil,
 			agglayerSettled: &certTestData{hash1, 1, agglayertypes.Settled},
 			agglayerPending: &certTestData{hash2, 2, agglayertypes.Pending},
-			resultActions:   &initialStateResultTest{InitialStatusActionInsertNewCert, "", &certTestData{hash2, 2, agglayertypes.Pending}},
+			resultActions: &initialStateResultTest{
+				InitialStatusActionInsertNewCert,
+				"",
+				&certTestData{hash2, 2, agglayertypes.Pending},
+			},
 		},
 		{
 			name:            "09|ID1, h1 , NA		    | nil 					| ID1, h1  , inError  			| update(PENDING)",
 			localCert:       &certTestData{hash1, 1, agglayertypes.Proven},
 			agglayerSettled: nil,
 			agglayerPending: &certTestData{hash1, 1, agglayertypes.InError},
-			resultActions:   &initialStateResultTest{InitialStatusActionUpdateCurrentCert, "", &certTestData{hash1, 1, agglayertypes.InError}},
+			resultActions: &initialStateResultTest{
+				InitialStatusActionUpdateCurrentCert,
+				"",
+				&certTestData{hash1, 1, agglayertypes.InError},
+			},
 		},
 
 		{
@@ -219,28 +243,44 @@ func TestRegularCases(t *testing.T) {
 			localCert:       &certTestData{hash2, 2, agglayertypes.Proven},
 			agglayerSettled: &certTestData{hash1, 1, agglayertypes.Settled},
 			agglayerPending: &certTestData{hash2, 2, agglayertypes.InError},
-			resultActions:   &initialStateResultTest{InitialStatusActionUpdateCurrentCert, "", &certTestData{hash2, 2, agglayertypes.InError}},
+			resultActions: &initialStateResultTest{
+				InitialStatusActionUpdateCurrentCert,
+				"",
+				&certTestData{hash2, 2, agglayertypes.InError},
+			},
 		},
 		{
 			name:            "11|ID2, h2 , NA		| ID1, h3 , N/A			| nil               			|  store(SETTLED)",
 			localCert:       &certTestData{hash2, 2, agglayertypes.Proven},
 			agglayerSettled: &certTestData{hash1, 3, agglayertypes.Proven},
 			agglayerPending: nil,
-			resultActions:   &initialStateResultTest{InitialStatusActionInsertNewCert, "", &certTestData{hash1, 3, agglayertypes.Proven}},
+			resultActions: &initialStateResultTest{
+				InitialStatusActionInsertNewCert,
+				"",
+				&certTestData{hash1, 3, agglayertypes.Proven},
+			},
 		},
 		{
 			name:            "12|ID2, h2 , NA		| ID1, h2 , settled		| ID1, h3 , !=inError           |  store(PENDING)",
 			localCert:       &certTestData{hash2, 2, agglayertypes.Proven},
 			agglayerSettled: &certTestData{hash1, 2, agglayertypes.Settled},
 			agglayerPending: &certTestData{hash1, 3, agglayertypes.Proven},
-			resultActions:   &initialStateResultTest{InitialStatusActionInsertNewCert, "", &certTestData{hash1, 3, agglayertypes.Proven}},
+			resultActions: &initialStateResultTest{
+				InitialStatusActionInsertNewCert,
+				"",
+				&certTestData{hash1, 3, agglayertypes.Proven},
+			},
 		},
 		{
 			name:            "13|ID2, h2 , NA		| ID1, h2 , settled		| ID1, h3 , inError             | store(PENDING)",
 			localCert:       &certTestData{hash2, 2, agglayertypes.Proven},
 			agglayerSettled: &certTestData{hash1, 2, agglayertypes.Settled},
 			agglayerPending: &certTestData{hash1, 3, agglayertypes.InError},
-			resultActions:   &initialStateResultTest{InitialStatusActionInsertNewCert, "", &certTestData{hash1, 3, agglayertypes.InError}},
+			resultActions: &initialStateResultTest{
+				InitialStatusActionInsertNewCert,
+				"",
+				&certTestData{hash1, 3, agglayertypes.InError},
+			},
 		},
 	}
 	runTestCases(t, tests)

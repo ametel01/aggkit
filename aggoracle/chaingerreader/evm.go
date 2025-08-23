@@ -55,7 +55,11 @@ func checkGlobalExitRootManagerContract(l2GERManager types.L2GERManagerContract,
 	if err != nil {
 		return fmt.Errorf("fail sanity check GlobalExitRootManagerL2(%s) Contract. Err: %w", contractAddr.String(), err)
 	}
-	log.Infof("sanity check GlobalExitRootManagerL2(%s) OK. bridgeAddress: %s", contractAddr.String(), bridgeAddr.String())
+	log.Infof(
+		"sanity check GlobalExitRootManagerL2(%s) OK. bridgeAddress: %s",
+		contractAddr.String(),
+		bridgeAddr.String(),
+	)
 	return nil
 }
 

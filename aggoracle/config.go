@@ -19,7 +19,7 @@ type Config struct {
 	TargetChainType TargetChainType `mapstructure:"TargetChainType"`
 	URLRPCL1        string          `mapstructure:"URLRPCL1"`
 	// BlockFinality indicates the status of the blocks that will be queried in order to sync
-	BlockFinality     string                   `jsonschema:"enum=LatestBlock, enum=SafeBlock, enum=PendingBlock, enum=FinalizedBlock, enum=EarliestBlock" mapstructure:"BlockFinality"` //nolint:lll
+	BlockFinality     string                   `mapstructure:"BlockFinality"     jsonschema:"enum=LatestBlock, enum=SafeBlock, enum=PendingBlock, enum=FinalizedBlock, enum=EarliestBlock"` //nolint:lll
 	WaitPeriodNextGER types.Duration           `mapstructure:"WaitPeriodNextGER"`
 	EVMSender         chaingersender.EVMConfig `mapstructure:"EVMSender"`
 	// SandboxMode enables simplified operation for local development

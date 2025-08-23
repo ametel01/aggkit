@@ -59,8 +59,13 @@ func (kv *KeyValueStorage) GetValue(tx types.Querier, owner, key string) (string
 		tx = kv.DB
 	}
 
-	err := meddler.QueryRow(tx, &data, fmt.Sprintf("SELECT * FROM %s WHERE owner = $1 and key = $2 LIMIT 1;", tableKVName),
-		owner, key)
+	err := meddler.QueryRow(
+		tx,
+		&data,
+		fmt.Sprintf("SELECT * FROM %s WHERE owner = $1 and key = $2 LIMIT 1;", tableKVName),
+		owner,
+		key,
+	)
 	return data.Value, ReturnErrNotFound(err)
 }
 

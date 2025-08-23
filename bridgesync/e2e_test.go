@@ -74,7 +74,13 @@ func TestBridgeEventE2E(t *testing.T) {
 		expectedRoot, err := setup.L1Environment.BridgeContract.GetRoot(nil)
 		require.NoError(t, err)
 		finalizedBlock := getFinalizedBlockNumber(t, ctx, setup.L1Environment.SimBackend.Client())
-		log.Infof("*** iteration: %d, Bridge Root: %s latestBlock:%d finalizedBlock:%d", i, common.Hash(expectedRoot).Hex(), bn, finalizedBlock)
+		log.Infof(
+			"*** iteration: %d, Bridge Root: %s latestBlock:%d finalizedBlock:%d",
+			i,
+			common.Hash(expectedRoot).Hex(),
+			bn,
+			finalizedBlock,
+		)
 		bridgesSent++
 		// Finish condition
 		if bridgesSent >= totalBridges {
@@ -97,13 +103,27 @@ func TestBridgeEventE2E(t *testing.T) {
 	require.NoError(t, err)
 	actualBridges, err := setup.L1Environment.BridgeSync.GetBridges(ctx, 0, lastProcessedBlock)
 	require.NoError(t, err)
-	log.Infof("lastBlockOnChain:%d lastProcessedBlock: %d, len(actualBridges): %d", lb, lastProcessedBlock, len(actualBridges))
+	log.Infof(
+		"lastBlockOnChain:%d lastProcessedBlock: %d, len(actualBridges): %d",
+		lb,
+		lastProcessedBlock,
+		len(actualBridges),
+	)
 	// Assert bridges
 	expectedRoot, err := setup.L1Environment.BridgeContract.GetRoot(nil)
 	require.NoError(t, err)
-	root, err := setup.L1Environment.BridgeSync.GetExitRootByIndex(ctx, expectedBridges[len(expectedBridges)-1].DepositCount)
+	root, err := setup.L1Environment.BridgeSync.GetExitRootByIndex(
+		ctx,
+		expectedBridges[len(expectedBridges)-1].DepositCount,
+	)
 	require.NoError(t, err)
-	log.Infof("expectedRoot: %s lastBlock: %d lastFinalized:%d DepositCount:%d ", common.Hash(expectedRoot).Hex(), lastBlock, lb, expectedBridges[len(expectedBridges)-1].DepositCount)
+	log.Infof(
+		"expectedRoot: %s lastBlock: %d lastFinalized:%d DepositCount:%d ",
+		common.Hash(expectedRoot).Hex(),
+		lastBlock,
+		lb,
+		expectedBridges[len(expectedBridges)-1].DepositCount,
+	)
 	for i := 79; i >= 0; i-- {
 		root, err := setup.L1Environment.BridgeSync.GetExitRootByIndex(ctx, uint32(i))
 		require.NoError(t, err, fmt.Sprintf("DepositCount:%d", i))

@@ -52,7 +52,10 @@ func Test_AggchainProverFlow_getCertificateTypeToGenerate(t *testing.T) {
 			data := NewAggchainProverFlowTestData(t,
 				NewAggchainProverFlowConfigDefault(),
 				NewBaseFlowConfigDefault())
-			data.mockOptimisticModeQuerier.EXPECT().IsOptimisticModeOn().Return(tc.optimisticModeReturn, tc.optimisticModeError).Once()
+			data.mockOptimisticModeQuerier.EXPECT().
+				IsOptimisticModeOn().
+				Return(tc.optimisticModeReturn, tc.optimisticModeError).
+				Once()
 			certificateType, err := data.sut.getCertificateTypeToGenerate()
 			if tc.optimisticModeError != nil {
 				require.ErrorContains(t, err, tc.optimisticModeError.Error())
@@ -86,7 +89,10 @@ func Test_AggchainProverFlow_PreviousCertNotSameTypeItRecalculateCertificate(t *
 		ToBlock:         70,
 		CertificateType: types.CertificateTypeFEP,
 	}
-	data.mockStorage.EXPECT().GetLastSentCertificateHeaderWithProofIfInError(data.ctx).Return(lastCert, lastCertProof, nil).Once()
+	data.mockStorage.EXPECT().
+		GetLastSentCertificateHeaderWithProofIfInError(data.ctx).
+		Return(lastCert, lastCertProof, nil).
+		Once()
 	// optimisticMode = off so it will generate a FEP certificate
 	data.mockOptimisticModeQuerier.EXPECT().IsOptimisticModeOn().Return(false, nil).Once()
 	// then because last cert type doesnt match is going to act as a new one
@@ -144,11 +150,13 @@ func Test_AggchainProverFlow_IfGenerateOptimisticCertCallsToAggkitProverSpecific
 	data.mockOptimisticSigner.EXPECT().Sign(data.ctx, mock.Anything, mock.Anything, nextCert.Claims).Return(
 		signature, "extra_data", nil).Once()
 	// Now calls to aggkit-prover service:
-	data.mockAggchainProofClient.EXPECT().GenerateOptimisticAggchainProof(mock.Anything, signature).Return(&types.AggchainProof{
-		SP1StarkProof: &types.SP1StarkProof{
-			Proof: []byte("proof"),
-		},
-	}, nil)
+	data.mockAggchainProofClient.EXPECT().
+		GenerateOptimisticAggchainProof(mock.Anything, signature).
+		Return(&types.AggchainProof{
+			SP1StarkProof: &types.SP1StarkProof{
+				Proof: []byte("proof"),
+			},
+		}, nil)
 
 	proof, root, err := data.sut.GenerateAggchainProof(data.ctx, nextCert.FromBlock-1, nextCert.ToBlock, nextCert)
 	require.NoError(t, err)

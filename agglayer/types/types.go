@@ -1071,7 +1071,8 @@ func convertMapValue[T any](data map[string]interface{}, key string) (T, error) 
 	targetType := reflect.TypeOf(target)
 
 	// Check if value is a float64 (default JSON number type) and target is a numeric type
-	if floatValue, ok := value.(float64); ok && targetType.Kind() >= reflect.Int && targetType.Kind() <= reflect.Uint64 {
+	if floatValue, ok := value.(float64); ok && targetType.Kind() >= reflect.Int &&
+		targetType.Kind() <= reflect.Uint64 {
 		convertedValue, err := convertNumeric(floatValue, targetType)
 		if err != nil {
 			return target, fmt.Errorf("conversion error for key %s: %w", key, err)

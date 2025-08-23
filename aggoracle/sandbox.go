@@ -210,7 +210,11 @@ func (s *SandboxAggOracle) simulateGERCalculation(latestBridge bridgesync.Bridge
 	l1InfoLeaf, err := s.AggOracle.l1Info.GetLatestInfoUntilBlock(ctx, latestBridge.BlockNum)
 	if err != nil {
 		// Fallback: if we can't get L1 info, use a deterministic calculation
-		s.logger.Warnf("Failed to get L1 info tree leaf for block %d: %v. Using fallback calculation.", latestBridge.BlockNum, err)
+		s.logger.Warnf(
+			"Failed to get L1 info tree leaf for block %d: %v. Using fallback calculation.",
+			latestBridge.BlockNum,
+			err,
+		)
 		return s.fallbackGERCalculation(latestBridge)
 	}
 

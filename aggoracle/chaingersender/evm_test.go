@@ -48,10 +48,13 @@ func TestEVMChainGERSender_InjectGER(t *testing.T) {
 		expectedErr     string
 	}{
 		{
-			name:            "successful injection",
-			addReturnTxID:   txID,
-			addReturnErr:    nil,
-			resultReturn:    &types.MonitoredTxResult{Status: types.MonitoredTxStatusMined, MinedAtBlockNumber: big.NewInt(123)},
+			name:          "successful injection",
+			addReturnTxID: txID,
+			addReturnErr:  nil,
+			resultReturn: &types.MonitoredTxResult{
+				Status:             types.MonitoredTxStatusMined,
+				MinedAtBlockNumber: big.NewInt(123),
+			},
 			resultReturnErr: nil,
 			expectedErr:     "",
 		},

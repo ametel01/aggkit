@@ -251,7 +251,15 @@ func TestCheckCompatibility(t *testing.T) {
 
 	reorgDetectorMock.EXPECT().Subscribe(reorgDetectorID).Return(&reorgdetector.Subscription{}, nil)
 
-	driver, err := NewEVMDriver(reorgDetectorMock, processorMock, downloaderMock, reorgDetectorID, 10, retryHandler, true)
+	driver, err := NewEVMDriver(
+		reorgDetectorMock,
+		processorMock,
+		downloaderMock,
+		reorgDetectorID,
+		10,
+		retryHandler,
+		true,
+	)
 	require.NoError(t, err)
 	driver.compatibilityChecker = compatibilityCheckerMock
 	t.Run("pass compatibility check", func(t *testing.T) {

@@ -41,8 +41,10 @@ func Test_GetFinalizedL1InfoTreeData(t *testing.T) {
 			mockFn: func(mockL1InfoTreeSyncer *mocks.L1InfoTreeSyncer, mockL1Client *aggkittypesmocks.BaseEthereumClienter) {
 				l1Header := &gethtypes.Header{Number: big.NewInt(10)}
 				mockL1Client.On("HeaderByNumber", ctx, finalizedBlockBigInt).Return(l1Header, nil)
-				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).Return(l1Header.Number.Uint64(), l1Header.Hash(), nil)
-				mockL1InfoTreeSyncer.On("GetLatestInfoUntilBlock", ctx, l1Header.Number.Uint64()).Return(nil, errors.New("some error"))
+				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).
+					Return(l1Header.Number.Uint64(), l1Header.Hash(), nil)
+				mockL1InfoTreeSyncer.On("GetLatestInfoUntilBlock", ctx, l1Header.Number.Uint64()).
+					Return(nil, errors.New("some error"))
 			},
 			expectedError: "error getting latest l1 info tree info until block num 10: some error",
 		},
@@ -51,7 +53,8 @@ func Test_GetFinalizedL1InfoTreeData(t *testing.T) {
 			mockFn: func(mockL1InfoTreeSyncer *mocks.L1InfoTreeSyncer, mockL1Client *aggkittypesmocks.BaseEthereumClienter) {
 				l1Header := &gethtypes.Header{Number: big.NewInt(10)}
 				mockL1Client.On("HeaderByNumber", ctx, finalizedBlockBigInt).Return(l1Header, nil)
-				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).Return(l1Header.Number.Uint64(), l1Header.Hash(), nil)
+				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).
+					Return(l1Header.Number.Uint64(), l1Header.Hash(), nil)
 				mockL1InfoTreeSyncer.On("GetLatestInfoUntilBlock", ctx, l1Header.Number.Uint64()).Return(
 					&l1infotreesync.L1InfoTreeLeaf{
 						L1InfoTreeIndex: 0,
@@ -59,7 +62,8 @@ func Test_GetFinalizedL1InfoTreeData(t *testing.T) {
 					},
 					nil,
 				)
-				mockL1InfoTreeSyncer.On("GetL1InfoTreeRootByIndex", ctx, uint32(0)).Return(treetypes.Root{}, errors.New("some error"))
+				mockL1InfoTreeSyncer.On("GetL1InfoTreeRootByIndex", ctx, uint32(0)).
+					Return(treetypes.Root{}, errors.New("some error"))
 			},
 			expectedError: "error getting L1 Info tree root by index 0: some error",
 		},
@@ -68,8 +72,10 @@ func Test_GetFinalizedL1InfoTreeData(t *testing.T) {
 			mockFn: func(mockL1InfoTreeSyncer *mocks.L1InfoTreeSyncer, mockL1Client *aggkittypesmocks.BaseEthereumClienter) {
 				l1Header := &gethtypes.Header{Number: big.NewInt(10)}
 				mockL1Client.On("HeaderByNumber", ctx, finalizedBlockBigInt).Return(l1Header, nil)
-				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).Return(l1Header.Number.Uint64(), l1Header.Hash(), nil)
-				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).Return(l1Header.Number.Uint64(), l1Header.Hash(), nil)
+				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).
+					Return(l1Header.Number.Uint64(), l1Header.Hash(), nil)
+				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).
+					Return(l1Header.Number.Uint64(), l1Header.Hash(), nil)
 				mockL1InfoTreeSyncer.On("GetLatestInfoUntilBlock", ctx, l1Header.Number.Uint64()).Return(
 					&l1infotreesync.L1InfoTreeLeaf{
 						L1InfoTreeIndex: 0,
@@ -80,7 +86,8 @@ func Test_GetFinalizedL1InfoTreeData(t *testing.T) {
 				mockL1InfoTreeSyncer.On("GetL1InfoTreeRootByIndex", ctx, uint32(0)).Return(treetypes.Root{
 					Hash: common.HexToHash("0x1"),
 				}, nil)
-				mockL1InfoTreeSyncer.On("GetL1InfoTreeMerkleProofFromIndexToRoot", ctx, uint32(0), common.HexToHash("0x1")).Return(treetypes.Proof{}, errors.New("some error"))
+				mockL1InfoTreeSyncer.On("GetL1InfoTreeMerkleProofFromIndexToRoot", ctx, uint32(0), common.HexToHash("0x1")).
+					Return(treetypes.Proof{}, errors.New("some error"))
 			},
 			expectedError: "error getting L1 Info tree merkle proof from index 0 to root",
 		},
@@ -89,7 +96,8 @@ func Test_GetFinalizedL1InfoTreeData(t *testing.T) {
 			mockFn: func(mockL1InfoTreeSyncer *mocks.L1InfoTreeSyncer, mockL1Client *aggkittypesmocks.BaseEthereumClienter) {
 				l1Header := &gethtypes.Header{Number: big.NewInt(10)}
 				mockL1Client.On("HeaderByNumber", ctx, finalizedBlockBigInt).Return(l1Header, nil)
-				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).Return(l1Header.Number.Uint64(), l1Header.Hash(), nil)
+				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).
+					Return(l1Header.Number.Uint64(), l1Header.Hash(), nil)
 				mockL1InfoTreeSyncer.On("GetLatestInfoUntilBlock", ctx, l1Header.Number.Uint64()).Return(
 					&l1infotreesync.L1InfoTreeLeaf{
 						L1InfoTreeIndex: 0,
@@ -100,7 +108,8 @@ func Test_GetFinalizedL1InfoTreeData(t *testing.T) {
 				mockL1InfoTreeSyncer.On("GetL1InfoTreeRootByIndex", ctx, uint32(0)).Return(treetypes.Root{
 					Hash: common.HexToHash("0x1"),
 				}, nil)
-				mockL1InfoTreeSyncer.On("GetL1InfoTreeMerkleProofFromIndexToRoot", ctx, uint32(0), common.HexToHash("0x1")).Return(treetypes.Proof{}, nil)
+				mockL1InfoTreeSyncer.On("GetL1InfoTreeMerkleProofFromIndexToRoot", ctx, uint32(0), common.HexToHash("0x1")).
+					Return(treetypes.Proof{}, nil)
 			},
 			expectedProof: treetypes.Proof{},
 			expectedLeaf:  &l1infotreesync.L1InfoTreeLeaf{Hash: common.HexToHash("0x2")},
@@ -158,7 +167,8 @@ func Test_AggchainProverFlow_GetLatestProcessedFinalizedBlock(t *testing.T) {
 			mockFn: func(mockL1InfoTreeSyncer *mocks.L1InfoTreeSyncer, mockL1Client *aggkittypesmocks.BaseEthereumClienter) {
 				l1Header := &gethtypes.Header{Number: big.NewInt(10)}
 				mockL1Client.On("HeaderByNumber", ctx, finalizedBlockBigInt).Return(l1Header, nil)
-				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).Return(uint64(0), common.Hash{}, errors.New("some error"))
+				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).
+					Return(uint64(0), common.Hash{}, errors.New("some error"))
 			},
 			expectedError: "error getting latest processed block from l1infotreesyncer: some error",
 		},
@@ -167,7 +177,8 @@ func Test_AggchainProverFlow_GetLatestProcessedFinalizedBlock(t *testing.T) {
 			mockFn: func(mockL1InfoTreeSyncer *mocks.L1InfoTreeSyncer, mockL1Client *aggkittypesmocks.BaseEthereumClienter) {
 				l1Header := &gethtypes.Header{Number: big.NewInt(10)}
 				mockL1Client.On("HeaderByNumber", ctx, finalizedBlockBigInt).Return(l1Header, nil)
-				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).Return(uint64(0), common.Hash{}, nil)
+				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).
+					Return(uint64(0), common.Hash{}, nil)
 			},
 			expectedError: "l1infotreesyncer did not process any block yet",
 		},
@@ -176,7 +187,8 @@ func Test_AggchainProverFlow_GetLatestProcessedFinalizedBlock(t *testing.T) {
 			mockFn: func(mockL1InfoTreeSyncer *mocks.L1InfoTreeSyncer, mockL1Client *aggkittypesmocks.BaseEthereumClienter) {
 				l1Header := &gethtypes.Header{Number: big.NewInt(10)}
 				mockL1Client.On("HeaderByNumber", ctx, finalizedBlockBigInt).Return(l1Header, nil)
-				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).Return(uint64(9), common.Hash{}, nil)
+				mockL1InfoTreeSyncer.On("GetProcessedBlockUntil", ctx, l1Header.Number.Uint64()).
+					Return(uint64(9), common.Hash{}, nil)
 				mockL1Client.On("HeaderByNumber", ctx, big.NewInt(9)).Return(nil, errors.New("some error"))
 			},
 			expectedError: "error getting latest processed finalized block: 9: some error",
@@ -248,7 +260,8 @@ func Test_GetProofForGER(t *testing.T) {
 			ger:  common.HexToHash("0x1"),
 			root: common.HexToHash("0x2"),
 			mockFn: func(mockL1InfoTreeSyncer *mocks.L1InfoTreeSyncer) {
-				mockL1InfoTreeSyncer.On("GetInfoByGlobalExitRoot", common.HexToHash("0x1")).Return(nil, errors.New("some error"))
+				mockL1InfoTreeSyncer.On("GetInfoByGlobalExitRoot", common.HexToHash("0x1")).
+					Return(nil, errors.New("some error"))
 			},
 			expectedError: "error getting info by global exit root: some error",
 		},
@@ -263,7 +276,8 @@ func Test_GetProofForGER(t *testing.T) {
 						Hash:            common.HexToHash("0x3"),
 					}, nil,
 				)
-				mockL1InfoTreeSyncer.On("GetL1InfoTreeMerkleProofFromIndexToRoot", ctx, uint32(0), common.HexToHash("0x2")).Return(treetypes.Proof{}, errors.New("some error"))
+				mockL1InfoTreeSyncer.On("GetL1InfoTreeMerkleProofFromIndexToRoot", ctx, uint32(0), common.HexToHash("0x2")).
+					Return(treetypes.Proof{}, errors.New("some error"))
 			},
 			expectedError: "error getting L1 Info tree merkle proof for GER: some error",
 		},
@@ -278,7 +292,8 @@ func Test_GetProofForGER(t *testing.T) {
 						Hash:            common.HexToHash("0x3"),
 					}, nil,
 				)
-				mockL1InfoTreeSyncer.On("GetL1InfoTreeMerkleProofFromIndexToRoot", ctx, uint32(0), common.HexToHash("0x2")).Return(treetypes.Proof{}, nil)
+				mockL1InfoTreeSyncer.On("GetL1InfoTreeMerkleProofFromIndexToRoot", ctx, uint32(0), common.HexToHash("0x2")).
+					Return(treetypes.Proof{}, nil)
 			},
 			expectedLeaf: &l1infotreesync.L1InfoTreeLeaf{
 				L1InfoTreeIndex: 0,
@@ -325,7 +340,8 @@ func Test_CheckIfClaimsArePartOfFinalizedL1InfoTree(t *testing.T) {
 		{
 			name: "error getting claim info by global exit root",
 			mockFn: func(mockL1InfoTreeSyncer *mocks.L1InfoTreeSyncer) {
-				mockL1InfoTreeSyncer.On("GetInfoByGlobalExitRoot", common.HexToHash("0x1")).Return(nil, errors.New("some error"))
+				mockL1InfoTreeSyncer.On("GetInfoByGlobalExitRoot", common.HexToHash("0x1")).
+					Return(nil, errors.New("some error"))
 			},
 			finalizedRoot: &treetypes.Root{Index: 0},
 			claims: []bridgesync.Claim{
@@ -336,7 +352,8 @@ func Test_CheckIfClaimsArePartOfFinalizedL1InfoTree(t *testing.T) {
 		{
 			name: "claim L1 Info tree index higher than finalized root index",
 			mockFn: func(mockL1InfoTreeSyncer *mocks.L1InfoTreeSyncer) {
-				mockL1InfoTreeSyncer.On("GetInfoByGlobalExitRoot", common.HexToHash("0x1")).Return(&l1infotreesync.L1InfoTreeLeaf{L1InfoTreeIndex: 1}, nil)
+				mockL1InfoTreeSyncer.On("GetInfoByGlobalExitRoot", common.HexToHash("0x1")).
+					Return(&l1infotreesync.L1InfoTreeLeaf{L1InfoTreeIndex: 1}, nil)
 			},
 			finalizedRoot: &treetypes.Root{Index: 0, Hash: common.HexToHash("0x2")},
 			claims: []bridgesync.Claim{
@@ -347,7 +364,8 @@ func Test_CheckIfClaimsArePartOfFinalizedL1InfoTree(t *testing.T) {
 		{
 			name: "success",
 			mockFn: func(mockL1InfoTreeSyncer *mocks.L1InfoTreeSyncer) {
-				mockL1InfoTreeSyncer.On("GetInfoByGlobalExitRoot", common.HexToHash("0x1")).Return(&l1infotreesync.L1InfoTreeLeaf{L1InfoTreeIndex: 0}, nil)
+				mockL1InfoTreeSyncer.On("GetInfoByGlobalExitRoot", common.HexToHash("0x1")).
+					Return(&l1infotreesync.L1InfoTreeLeaf{L1InfoTreeIndex: 0}, nil)
 			},
 			finalizedRoot: &treetypes.Root{Index: 1},
 			claims: []bridgesync.Claim{

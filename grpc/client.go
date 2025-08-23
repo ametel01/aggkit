@@ -113,8 +113,11 @@ func (c *ClientConfig) validateRequestTimeout() error {
 	totalBackoff := c.calculateTotalBackoff()
 
 	if c.RequestTimeout.Duration < totalBackoff {
-		return fmt.Errorf("RequestTimeout (%s) is too short; expected at least %s to accommodate the worst case retries",
-			c.RequestTimeout, totalBackoff)
+		return fmt.Errorf(
+			"RequestTimeout (%s) is too short; expected at least %s to accommodate the worst case retries",
+			c.RequestTimeout,
+			totalBackoff,
+		)
 	}
 
 	return nil

@@ -24,7 +24,9 @@ func TestGenerateAggchainProofRPC(t *testing.T) {
 		toBlock := uint64(10)
 		expectedProof := &types.SP1StarkProof{Proof: []byte("proof")}
 
-		aggchainProofGen.EXPECT().GenerateAggchainProof(mock.Anything, fromBlock, toBlock).Return(&types.SP1StarkProof{Proof: []byte("proof")}, nil)
+		aggchainProofGen.EXPECT().
+			GenerateAggchainProof(mock.Anything, fromBlock, toBlock).
+			Return(&types.SP1StarkProof{Proof: []byte("proof")}, nil)
 
 		result, err := genRPC.GenerateAggchainProof(fromBlock, toBlock)
 		require.NoError(t, err)

@@ -23,7 +23,11 @@ func (p *processor) processVerifyBatches(tx dbtypes.Txer, blockNumber uint64, ev
 	// If ExitRoot is zero if the leaf doesnt exists doesnt change the root of tree.
 	//  	if leaf already exists doesn't make sense to 'empty' the leaf, so we keep previous value
 	if event.ExitRoot == (common.Hash{}) {
-		log.Infof("skipping VerifyBatches event with empty ExitRoot (blockNumber=%d, event=%s)", blockNumber, event.String())
+		log.Infof(
+			"skipping VerifyBatches event with empty ExitRoot (blockNumber=%d, event=%s)",
+			blockNumber,
+			event.String(),
+		)
 		return nil
 	}
 	isNewLeaf, err := p.isNewValueForRollupExitTree(tx, event)
@@ -31,7 +35,11 @@ func (p *processor) processVerifyBatches(tx dbtypes.Txer, blockNumber uint64, ev
 		return fmt.Errorf("isNewValueForrollupExitTree. err: %w", err)
 	}
 	if !isNewLeaf {
-		log.Infof("skipping VerifyBatches event with same ExitRoot (blockNumber=%d, event=%s)", blockNumber, event.String())
+		log.Infof(
+			"skipping VerifyBatches event with same ExitRoot (blockNumber=%d, event=%s)",
+			blockNumber,
+			event.String(),
+		)
 		return nil
 	}
 	log.Infof("UpsertLeaf VerifyBatches event (blockNumber=%d, event=%s)", blockNumber, event.String())

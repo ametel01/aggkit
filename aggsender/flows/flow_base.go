@@ -171,7 +171,10 @@ func (f *baseFlow) GetNewLocalExitRoot(ctx context.Context,
 	}
 	_, previousLER, err := f.getNextHeightAndPreviousLER(certParams.LastSentCertificate)
 	if err != nil {
-		return common.Hash{}, fmt.Errorf("baseFlow.GetNewLocalExitRoot. error getting next height and previous LER: %w", err)
+		return common.Hash{}, fmt.Errorf(
+			"baseFlow.GetNewLocalExitRoot. error getting next height and previous LER: %w",
+			err,
+		)
 	}
 
 	newLER, err := f.getNewLocalExitRoot(ctx, certParams, previousLER)
@@ -192,7 +195,11 @@ func (f *baseFlow) BuildCertificate(ctx context.Context,
 	}
 
 	bridgeExits := f.getBridgeExits(certParams.Bridges)
-	importedBridgeExits, err := f.getImportedBridgeExits(ctx, certParams.Claims, certParams.L1InfoTreeRootFromWhichToProve)
+	importedBridgeExits, err := f.getImportedBridgeExits(
+		ctx,
+		certParams.Claims,
+		certParams.L1InfoTreeRootFromWhichToProve,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error getting imported bridge exits: %w", err)
 	}

@@ -125,7 +125,9 @@ func (c *CertificateBuildParams) EstimatedSize() uint {
 	switch c.CertificateType {
 	case CertificateTypeFEP:
 		sizeAggchainData += agglayertypes.EstimatedAggchainProofSize
-		sizeAggchainData += float64(len(c.Claims) * claimSizeFactor) // for each claim the proof gets bigger by some size
+		sizeAggchainData += float64(
+			len(c.Claims) * claimSizeFactor,
+		) // for each claim the proof gets bigger by some size
 	default:
 		sizeAggchainData += agglayertypes.EstimatedAggchainSignatureSize
 	}

@@ -363,18 +363,23 @@ func TestSetClaimCalldata(t *testing.T) {
 		Err: nil,
 		Calls: []call{
 			{
-				To:    bridgeAddr,
-				From:  common.HexToAddress("0x20"),
-				Err:   nil,
-				Input: append(claimAssetEtrogMethodID, []byte{0x00, 0x01, 0x02, 0x03}...), // not valid ABI, but triggers methodID match
+				To:   bridgeAddr,
+				From: common.HexToAddress("0x20"),
+				Err:  nil,
+				Input: append(
+					claimAssetEtrogMethodID,
+					[]byte{0x00, 0x01, 0x02, 0x03}...), // not valid ABI, but triggers methodID match
 			},
 		},
 	}
-	client.EXPECT().Call(mock.Anything, debugTraceTxEndpoint, txHash, mock.Anything).Run(func(result any, method string, args ...any) {
-		arg, ok := result.(*call)
-		require.True(t, ok)
-		*arg = *rootCall
-	}).Return(nil)
+	client.EXPECT().
+		Call(mock.Anything, debugTraceTxEndpoint, txHash, mock.Anything).
+		Run(func(result any, method string, args ...any) {
+			arg, ok := result.(*call)
+			require.True(t, ok)
+			*arg = *rootCall
+		}).
+		Return(nil)
 
 	claim := &Claim{}
 	err := claim.setClaimCalldata(client, bridgeAddr, txHash, logger)
@@ -386,11 +391,14 @@ func TestSetClaimCalldata(t *testing.T) {
 		To:  bridgeAddr,
 		Err: strPtr("reverted"),
 	}
-	client.EXPECT().Call(mock.Anything, debugTraceTxEndpoint, txHash, mock.Anything).Run(func(result any, method string, args ...any) {
-		arg, ok := result.(*call)
-		require.True(t, ok)
-		*arg = *rootCall
-	}).Return(nil)
+	client.EXPECT().
+		Call(mock.Anything, debugTraceTxEndpoint, txHash, mock.Anything).
+		Run(func(result any, method string, args ...any) {
+			arg, ok := result.(*call)
+			require.True(t, ok)
+			*arg = *rootCall
+		}).
+		Return(nil)
 
 	claim = &Claim{}
 	err = claim.setClaimCalldata(client, bridgeAddr, txHash, logger)
@@ -408,11 +416,14 @@ func TestSetClaimCalldata(t *testing.T) {
 			},
 		},
 	}
-	client.EXPECT().Call(mock.Anything, debugTraceTxEndpoint, txHash, mock.Anything).Run(func(result any, method string, args ...any) {
-		arg, ok := result.(*call)
-		require.True(t, ok)
-		*arg = *rootCall
-	}).Return(nil)
+	client.EXPECT().
+		Call(mock.Anything, debugTraceTxEndpoint, txHash, mock.Anything).
+		Run(func(result any, method string, args ...any) {
+			arg, ok := result.(*call)
+			require.True(t, ok)
+			*arg = *rootCall
+		}).
+		Return(nil)
 
 	claim = &Claim{}
 	err = claim.setClaimCalldata(client, bridgeAddr, txHash, logger)
@@ -424,11 +435,14 @@ func TestSetClaimCalldata(t *testing.T) {
 		Err:   nil,
 		Calls: []call{},
 	}
-	client.EXPECT().Call(mock.Anything, debugTraceTxEndpoint, txHash, mock.Anything).Run(func(result any, method string, args ...any) {
-		arg, ok := result.(*call)
-		require.True(t, ok)
-		*arg = *rootCall
-	}).Return(nil)
+	client.EXPECT().
+		Call(mock.Anything, debugTraceTxEndpoint, txHash, mock.Anything).
+		Run(func(result any, method string, args ...any) {
+			arg, ok := result.(*call)
+			require.True(t, ok)
+			*arg = *rootCall
+		}).
+		Return(nil)
 
 	claim = &Claim{}
 	err = claim.setClaimCalldata(client, bridgeAddr, txHash, logger)

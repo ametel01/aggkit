@@ -70,8 +70,11 @@ func TestCertificateHeaderString(t *testing.T) {
 		Height:        1,
 		CertificateID: common.HexToHash("0x123"),
 	}
-	require.Equal(t, "Height: 1, CertificateID: 0x0000000000000000000000000000000000000000000000000000000000000123, PreviousLocalExitRoot: nil, NewLocalExitRoot: 0x0000000000000000000000000000000000000000000000000000000000000000. Status: Pending. SettlementTxnHash: nil, Errors: []",
-		certificate.String())
+	require.Equal(
+		t,
+		"Height: 1, CertificateID: 0x0000000000000000000000000000000000000000000000000000000000000123, PreviousLocalExitRoot: nil, NewLocalExitRoot: 0x0000000000000000000000000000000000000000000000000000000000000000. Status: Pending. SettlementTxnHash: nil, Errors: []",
+		certificate.String(),
+	)
 
 	var certNil *CertificateHeader
 	require.Equal(t, "nil", certNil.String())
@@ -147,8 +150,11 @@ func TestMarshalJSON(t *testing.T) {
 			ImportedBridgeExits: []*ImportedBridgeExit{
 				{
 					BridgeExit: &BridgeExit{
-						LeafType:           LeafTypeMessage,
-						TokenInfo:          &TokenInfo{OriginNetwork: 1, OriginTokenAddress: common.HexToAddress("0x789")},
+						LeafType: LeafTypeMessage,
+						TokenInfo: &TokenInfo{
+							OriginNetwork:      1,
+							OriginTokenAddress: common.HexToAddress("0x789"),
+						},
 						DestinationNetwork: 2,
 						DestinationAddress: common.HexToAddress("0xabc"),
 						Amount:             big.NewInt(2000),
@@ -182,8 +188,11 @@ func TestMarshalJSON(t *testing.T) {
 				},
 				{
 					BridgeExit: &BridgeExit{
-						LeafType:           LeafTypeAsset,
-						TokenInfo:          &TokenInfo{OriginNetwork: 1, OriginTokenAddress: common.HexToAddress("0x789")},
+						LeafType: LeafTypeAsset,
+						TokenInfo: &TokenInfo{
+							OriginNetwork:      1,
+							OriginTokenAddress: common.HexToAddress("0x789"),
+						},
 						DestinationNetwork: 2,
 						DestinationAddress: common.HexToAddress("0xabcdef"),
 						Amount:             big.NewInt(2201),
@@ -230,9 +239,21 @@ func TestMarshalJSON(t *testing.T) {
 		require.Equal(t, expectedJSON, string(data))
 
 		require.Equal(t, "0x5a926e0544e71ad5ab119622f4e92588df8c524185006674f66252dc5245d0af", cert.Hash().String())
-		require.Equal(t, "0x2f01782930cbf2bc2ab4ec16759a2288ad7df865dea387aadf55f96136269cf4", cert.BridgeExits[0].Hash().String())
-		require.Equal(t, "0xe1a594db4275e6e5ab302057e48955c7faf53a8910497590a742b3da89046320", cert.ImportedBridgeExits[0].Hash().String())
-		require.Equal(t, "0xcc9e20b86e9984d9f68b0252f224cb4bc774981c320ef375fb63706220f5af4d", cert.ImportedBridgeExits[1].Hash().String())
+		require.Equal(
+			t,
+			"0x2f01782930cbf2bc2ab4ec16759a2288ad7df865dea387aadf55f96136269cf4",
+			cert.BridgeExits[0].Hash().String(),
+		)
+		require.Equal(
+			t,
+			"0xe1a594db4275e6e5ab302057e48955c7faf53a8910497590a742b3da89046320",
+			cert.ImportedBridgeExits[0].Hash().String(),
+		)
+		require.Equal(
+			t,
+			"0xcc9e20b86e9984d9f68b0252f224cb4bc774981c320ef375fb63706220f5af4d",
+			cert.ImportedBridgeExits[1].Hash().String(),
+		)
 	})
 }
 
@@ -730,7 +751,11 @@ func TestMerkleProof_String(t *testing.T) {
 				Root:  common.HexToHash("0xabc123"),
 				Proof: [types.DefaultHeight]common.Hash{},
 			},
-			expected: fmt.Sprintf("Root: %s, Proof: %v", common.HexToHash("0xabc123").String(), [types.DefaultHeight]common.Hash{}),
+			expected: fmt.Sprintf(
+				"Root: %s, Proof: %v",
+				common.HexToHash("0xabc123").String(),
+				[types.DefaultHeight]common.Hash{},
+			),
 		},
 		{
 			name: "Non-Empty Root and Partially Populated Proof",

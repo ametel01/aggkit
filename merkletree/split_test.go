@@ -33,9 +33,18 @@ func TestScalar2Fea(t *testing.T) {
 			expected: []uint64{0x90ABCDEF, 0x12345678, 0x90ABCDEF, 0x12345678, 0, 0, 0, 0},
 		},
 		{
-			name:     "All bits set in each 32-bit chunk (256-bit)",
-			input:    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
-			expected: []uint64{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
+			name:  "All bits set in each 32-bit chunk (256-bit)",
+			input: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+			expected: []uint64{
+				0xFFFFFFFF,
+				0xFFFFFFFF,
+				0xFFFFFFFF,
+				0xFFFFFFFF,
+				0xFFFFFFFF,
+				0xFFFFFFFF,
+				0xFFFFFFFF,
+				0xFFFFFFFF,
+			},
 		},
 	}
 
