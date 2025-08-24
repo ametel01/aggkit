@@ -141,11 +141,23 @@ func NewClaimResponseWithBridge(claim *bridgesync.Claim, bridge *bridgesync.Brid
 	if claim.IsMessage {
 		claimType = claimTypeMessage
 	} else {
-		// Fallback heuristic for backward compatibility:
-		// Message bridges typically have amount = 0 and destination = BridgeExtension contract (same as origin)
-		zero := big.NewInt(0)
-		if claim.Amount.Cmp(zero) == 0 && claim.DestinationAddress == claim.OriginAddress {
+		// Secondary check: Use bridge data if available - check leaf type (1 = message, 0 = asset)
+		if bridge != nil && bridge.LeafType == 1 {
 			claimType = claimTypeMessage
+		} else {
+			// Fallback heuristic for backward compatibility:
+			// Message bridges/claims typically have amount = 0 (since messages don't transfer tokens)
+			zero := big.NewInt(0)
+			if claim.Amount.Cmp(zero) == 0 {
+				// Additional check: if destination == origin, it's likely a message to BridgeExtension
+				if claim.DestinationAddress == claim.OriginAddress {
+					claimType = claimTypeMessage
+				} else {
+					// Even if destination != origin, zero amount often indicates a message claim
+					// This handles cases where claimMessage was called but IsMessage wasn't set correctly
+					claimType = claimTypeMessage
+				}
+			}
 		}
 	}
 
