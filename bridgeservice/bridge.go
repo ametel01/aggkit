@@ -31,6 +31,7 @@ import (
 	"github.com/agglayer/aggkit/claimsponsor"
 	aggkitcommon "github.com/agglayer/aggkit/common"
 	"github.com/agglayer/aggkit/config"
+	"github.com/agglayer/aggkit/db"
 	"github.com/agglayer/aggkit/l1infotreesync"
 	"github.com/agglayer/aggkit/log"
 	tree "github.com/agglayer/aggkit/tree/types"
@@ -1332,11 +1333,21 @@ func (b *BridgeService) GetSyncStatusHandler(c *gin.Context) {
 func (b *BridgeService) getFirstL1InfoTreeIndexForL1Bridge(ctx context.Context, depositCount uint32) (uint32, error) {
 	lastInfo, err := b.l1InfoTree.GetLastInfo()
 	if err != nil {
+		// Handle the case when no L1 info tree entries exist yet and depositCount=0
+		if errors.Is(err, db.ErrNotFound) && depositCount == 0 {
+			// Return 0 as the L1 info tree index when no entries exist for depositCount=0
+			return 0, nil
+		}
 		return 0, err
 	}
 
 	root, err := b.bridgeL1.GetRootByLER(ctx, lastInfo.MainnetExitRoot)
 	if err != nil {
+		// Handle the case when no bridges exist yet and depositCount=0
+		if errors.Is(err, db.ErrNotFound) && depositCount == 0 {
+			// Return the latest L1 info tree index when no bridges exist for depositCount=0
+			return lastInfo.L1InfoTreeIndex, nil
+		}
 		return 0, err
 	}
 	if root.Index < depositCount {
@@ -1402,11 +1413,34 @@ func (b *BridgeService) getFirstL1InfoTreeIndexForL2Bridge(ctx context.Context, 
 
 	lastVerified, err := b.l1InfoTree.GetLastVerifiedBatches(b.networkID)
 	if err != nil {
+		// Handle the case when no verified batches exist yet and depositCount=0
+		if errors.Is(err, db.ErrNotFound) && depositCount == 0 {
+			// Try to get the latest L1 info tree index when no verified batches exist for depositCount=0
+			lastInfo, infoErr := b.l1InfoTree.GetLastInfo()
+			if infoErr != nil {
+				// Handle the case when no L1 info tree entries exist either
+				if errors.Is(infoErr, db.ErrNotFound) {
+					// Return 0 as the L1 info tree index when no entries exist for depositCount=0
+					return 0, nil
+				}
+				return 0, infoErr
+			}
+			return lastInfo.L1InfoTreeIndex, nil
+		}
 		return 0, err
 	}
 
 	root, err := b.bridgeL2.GetRootByLER(ctx, lastVerified.ExitRoot)
 	if err != nil {
+		// Handle the case when no bridges exist yet and depositCount=0
+		if errors.Is(err, db.ErrNotFound) && depositCount == 0 {
+			// Return the latest L1 info tree index when no bridges exist for depositCount=0
+			lastInfo, infoErr := b.l1InfoTree.GetLastInfo()
+			if infoErr != nil {
+				return 0, infoErr
+			}
+			return lastInfo.L1InfoTreeIndex, nil
+		}
 		return 0, err
 	}
 	if root.Index < depositCount {
